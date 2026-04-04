@@ -183,6 +183,11 @@ int main() {
         res.set_content(resp.dump(), "application/json");
     });
 
+    svr.Get("/health", [](const httplib::Request&, httplib::Response& res) {
+        json resp = {{"status", "healthy"}, {"node", "C++-CryptoPP"}};
+        res.set_content(resp.dump(), "application/json");
+    });
+
     svr.Get("/public-key", [&](const httplib::Request&, httplib::Response& res) {
         std::string pem = raw_ec_pub_to_pem(node_pub);
         json resp = {{"public_key_pem", pem}};

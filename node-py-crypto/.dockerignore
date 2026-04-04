@@ -1,0 +1,54 @@
+# Pliki i foldery, które nie są potrzebne w obrazie Docker
+
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+.env
+venv
+env
+.venv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+docs
+*.md
+!requirements.txt
+
+# Test files
+tests
+test_*.py
+*_test.py
+pytest.ini
+
+# Temporary
+*.log
+*.tmp
