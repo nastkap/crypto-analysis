@@ -105,6 +105,12 @@ def read_root():
     return {"status": "ok", "node": "Python-PyCryptodome", "message": "Mikroserwis dziala!"}
 
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint dla Docker health checks"""
+    return {"status": "healthy", "node": "Python-PyCryptodome"}
+
+
 @app.get("/public-key")
 def get_public_key():
     pub_pem = node_public_key.export_key(format="PEM")

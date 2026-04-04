@@ -184,6 +184,11 @@ int main() {
         res.set_content(resp.dump(), "application/json");
     });
 
+    svr.Get("/health", [](const httplib::Request&, httplib::Response& res) {
+        json resp = {{"status", "healthy"}, {"node", "C++-OpenSSL"}};
+        res.set_content(resp.dump(), "application/json");
+    });
+
     svr.Get("/public-key", [&](const httplib::Request&, httplib::Response& res) {
         std::string pem = pubkey_to_pem(node_priv);
         json resp = {{"public_key_pem", pem}};

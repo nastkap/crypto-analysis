@@ -47,6 +47,12 @@ def read_root():
     }
 
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint dla Docker health checks"""
+    return {"status": "healthy", "service": "ECIES Benchmark Controller"}
+
+
 @app.post("/benchmark", response_model=BenchmarkResponse)
 def run_benchmark(req: BenchmarkRequest):
     global _last_results, _last_csv, _is_running

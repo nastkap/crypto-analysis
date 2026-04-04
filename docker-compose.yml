@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # 1. Nasza skrzynka pocztowa i przechowalnia kluczy publicznych
+  message-broker:
+    image: redis:alpine
+    container_name: ecies-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - crypto-net
+
+  # 2. Centrala (Zarządza testami)
+  benchmark-controller:
+    build: ./benchmark-controller
+    container_name: ecies-controller
+    ports:
+      - "8000:8000"
+    environment:
+      - BROKER_URL=redis://message-broker:6379
+    depends_on:
+      - message-broker
+    networks:
+      - crypto-net
+
+  # 3. Węzeł Szyfrujący A (Python - cryptography)
+  node-py-crypto:
+    build: ./node-py-crypto
+    container_name: ecies-py-crypto
+    environment:
+      - NODE_NAME=Python_Cryptography
+      - BROKER_URL=redis://message-broker:6379
+    depends_on:
+      - message-broker
+    networks:
+      - crypto-net
+
+  # 4. Węzeł Szyfrujący B (Python - PyCryptodome)
+  node-py-pycryptodome:
+    build: ./node-py-pycryptodome
+    container_name: ecies-py-pycryptodome
+    environment:
+      - NODE_NAME=Python_PyCryptodome
+      - BROKER_URL=redis://message-broker:6379
+    depends_on:
+      - message-broker
+    networks:
+      - crypto-net
+
+  # 5. Węzeł Szyfrujący C (C++ - OpenSSL)
+  node-cpp-openssl:
+    build: ./node-cpp-openssl
+    container_name: ecies-cpp-openssl
+    environment:
+      - NODE_NAME=CPP_OpenSSL
+      - BROKER_URL=redis://message-broker:6379
+    depends_on:
+      - message-broker
+    networks:
+      - crypto-net
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/server"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # 6. Węzeł Szyfrujący D (C++ - Crypto++)
+  node-cpp-cryptopp:
+    build: ./node-cpp-cryptopp
+    container_name: ecies-cpp-cryptopp
+    environment:
+      - NODE_NAME=CPP_CryptoPP
+      - BROKER_URL=redis://message-broker:6379
+    depends_on:
+      - message-broker
+    networks:
+      - crypto-net
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/server"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  crypto-net:
+    driver: bridge

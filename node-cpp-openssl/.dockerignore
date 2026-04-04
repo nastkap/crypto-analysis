@@ -1,0 +1,53 @@
+# Pliki i foldery, które nie są potrzebne w obrazie Docker
+
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# C/C++
+*.o
+*.obj
+*.a
+*.lib
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+*.exe
+.vscode
+
+# Build artifacts
+build
+dist
+Debug
+Release
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+docs
+*.md
+README*
+LICENSE
+
+# Temporary
+*.log
+*.tmp
+*.depend

@@ -105,6 +105,11 @@ class DecryptRequest(BaseModel):
 def read_root():
     return {"status": "ok", "node": "Python-Cryptography", "message": "Mikroserwis dziala!"}
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint dla Docker health checks"""
+    return {"status": "healthy", "node": "Python-Cryptography"}
+
 @app.get("/public-key")
 def get_public_key():
     """Zwraca klucz publiczny tego węzła, żeby inni wiedzieli jak do niego szyfrować."""
