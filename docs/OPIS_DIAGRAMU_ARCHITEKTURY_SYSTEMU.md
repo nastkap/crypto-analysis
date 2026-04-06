@@ -98,7 +98,7 @@ Gdzie pracują: Biuro 4
 
 ## Czwarty poziom: Centralna poczta (Redis)
 
-W samym srodku budynku znajduje się centrala poczty. To Redis.
+W samym srodku budynku znajduje się centralna poczty. To Redis.
 
 Gdy ty, dyrektor, wydasz polecenie "Zaszyfuj to!", Redis:
 
