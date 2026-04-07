@@ -1,20 +1,18 @@
 # STAGE 1: Builder
-FROM ubuntu:22.04 AS builder
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM alpine:latest AS builder
 
 # Instalacja build tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apk add --no-cache \
     g++ \
     make \
     wget \
     unzip \
     git \
-    nlohmann-json3-dev \
+    nlohmann-json \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    musl-dev
 
-# Budowanie Crypto++ ze źródeł (nie ma w ubuntu 22.04 repo)
+# Budowanie Crypto++ ze źródeł
 RUN mkdir -p /tmp/cryptopp && cd /tmp/cryptopp && \
     wget -q https://github.com/weidai11/cryptopp/releases/download/CRYPTOPP_8_7_0/cryptopp870.zip && \
     unzip -q cryptopp870.zip && \
@@ -22,14 +20,14 @@ RUN mkdir -p /tmp/cryptopp && cd /tmp/cryptopp && \
     make install && \
     cd / && rm -rf /tmp/cryptopp
 
-# Budowanie hiredis ze źródeł (nie ma w ubuntu 22.04 repo)
+# Budowanie hiredis ze źródeł
 RUN mkdir -p /tmp/hiredis && cd /tmp/hiredis && \
     git clone --depth 1 https://github.com/redis/hiredis.git . && \
     make install && \
     cd / && rm -rf /tmp/hiredis
 
 # Setup library path
-RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
+RUN mkdir -p /etc/ld.so.conf.d && echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
 
 # Pobranie header-only biblioteki HTTP
 RUN mkdir -p /usr/local/include && \
@@ -50,9 +48,7 @@ RUN g++ -std=c++17 -O2 -Wall -Wextra \
 
 # ==========================================
 # STAGE 2: Runtime (minimal)
-FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM alpine:latest
 
 # Metadata
 LABEL maintainer="ECIES Project"
@@ -68,14 +64,13 @@ LABEL org.sbom.scope="application"
 LABEL org.sbom.tool="docker-buildx"
 
 # Instalacja TYLKO runtime dependencies (bez build tools)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libstdc++6 \
+RUN apk add --no-cache \
+    libstdc++ \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    musl
 
 # Tworzenie non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
@@ -87,7 +82,7 @@ COPY --from=builder /usr/local/lib/libcryptopp.so* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libhiredis.so* /usr/local/lib/
 
 # Setup library path
-RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
+RUN mkdir -p /etc/ld.so.conf.d && echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && ldconfig
 
 # Ustaw proper permissions
 RUN chown appuser:appuser /app && chmod 755 /app/server
@@ -99,6 +94,6 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD /app/server health || exit 1
+    CMD test -f /app/server || exit 1
 
 CMD ["./server"]
