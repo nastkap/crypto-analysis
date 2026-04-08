@@ -1,6 +1,5 @@
 # WARUNEK 5: Testowa (deweloperska) wersja pliku docker-compose.yaml
 
----
 
 ## **Weryfikacja**
 
