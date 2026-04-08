@@ -81,7 +81,7 @@ To nie są zwykli pracownicy. To są inżynierowie wysokiego poziomu. Pracują n
 Co robią: Szyfrują wiadomości na poziomie Hardware
 Jak pracują: Błyskawicznie, optymalno
 Czas pracy: Trwa im 1.9 ms - najszybsi ze wszystkich!
-Narzędzia: C++, biblioteka OpenSSL, Linux Ubuntu 22.04
+Narzędzia: C++, biblioteka OpenSSL, Alpine + C++17
 Gdzie pracują: Biuro 3
 
 ### Zespół 4: Naukowcy zaawansowanej kryptografii (C++ Crypto++)
@@ -91,7 +91,7 @@ To są naukowcy rozwijający przyszłość bezpieczeństwa. Pracują nad najzaaw
 Co robią: Szyfrują wiadomości zaawansowanymi metodami matematycznymi
 Jak pracują: Precyzyjnie, naukowo
 Czas pracy: Trwa im 2.1 ms - szybko i dokładnie
-Narzędzia: C++, biblioteka Crypto++, Linux Ubuntu 22.04
+Narzędzia: C++, biblioteka Crypto++, Alpine + C++17
 Gdzie pracują: Biuro 4
 
 ---
@@ -111,5 +111,6 @@ Gdy ty, dyrektor, wydasz polecenie "Zaszyfuj to!", Redis:
 Redis jest jak centralny pośrednika informacji. Gdyby nie Redis, zespoły by sobie nawzajem przeszkadzały.
 
 ---
+
 
 
