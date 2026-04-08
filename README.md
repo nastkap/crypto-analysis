@@ -1,4 +1,4 @@
-# crypto-analysis
+# System bezpiecznej wymiany wiadomości ECIES 
 
 System do porównania wydajności implementacji szyfrowania ECIES w czterech bibliotekach kryptograficznych (cryptography, PyCryptodome, OpenSSL, Crypto++) zbudowany w architekturze mikrousług Docker Compose
 
