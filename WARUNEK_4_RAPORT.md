@@ -6,7 +6,7 @@
 
 Wykonano analizę podatności wszystkich 5 obrazów Docker za pomocą **Trivy**
 
-### Wyniki Skanowania:
+### Wyniki skanowania:
 
 | Obraz | Architektura | CRITICAL | HIGH | 
 |-------|-------------|-------|------|
@@ -76,7 +76,7 @@ $trivy = "$trivyDir\trivy.exe"
 
 
 
-### 1. **nastap/controller:latest** **- 0 CRITICAL | 10 HIGH zagrożeń**
+### 1. **nastap/controller:latest - 0 CRITICAL | 10 HIGH zagrożeń**
 
 
 #### Zagrożenia z Debian (6 HIGH):
@@ -159,7 +159,7 @@ Status: Dotyczy procesu budowy, nie runtime działania aplikacji.
 
 ---
 
-### 2.  **nastap/crypto:latest** ** - 0 CRITICAL | 13 HIGH zagrożeń**
+### 2.  **nastap/crypto:latest - 0 CRITICAL | 13 HIGH zagrożeń**
 
 
 Zawiera wszystkie zagrożenia z controller + 3 dodatkowe:
