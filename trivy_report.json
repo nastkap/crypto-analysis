@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-04-08T01:43:18.166131",
+  "images": {
+    "nastap/controller:latest": {
+      "critical": 0,
+      "high": 10,
+      "status": "\u2705 PASS"
+    },
+    "nastap/crypto:latest": {
+      "critical": 0,
+      "high": 13,
+      "status": "\u2705 PASS"
+    },
+    "nastap/pycryptodome:latest": {
+      "critical": 0,
+      "high": 10,
+      "status": "\u2705 PASS"
+    },
+    "nastap/openssl:latest": {
+      "critical": 0,
+      "high": 1,
+      "status": "\u2705 PASS"
+    },
+    "nastap/cryptopp:latest": {
+      "critical": 0,
+      "high": 1,
+      "status": "\u2705 PASS"
+    }
+  },
+  "summary": {
+    "total_critical": 0,
+    "total_high": 35,
+    "overall_status": "PASS"
+  }
+}
