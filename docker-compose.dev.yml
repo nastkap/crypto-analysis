@@ -1,0 +1,307 @@
+
+# Plik do testowania pierwszej wersji aplikacji crypto-analysis
+# Potwierdzenie poprawności funkcjonalnej systemu
+
+
+version: '3.9'
+
+services:
+
+  # ========================================================================
+  # 1. BENCHMARK CONTROLLER - Główny Serwis Kontroli
+  # ========================================================================
+  controller:
+    image: nastap/controller:latest
+    container_name: crypto-controller
+    ports:
+      - "${CONTROLLER_PORT:-8000}:8000"
+    environment:
+      # Zmienne środowiskowe z .env
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ENVIRONMENT: "${ENVIRONMENT:-development}"
+    volumes:
+      # Volume do logów
+      - controller_logs:/app/logs
+      # Volume do cache'u
+      - controller_cache:/app/cache
+      # Volume do danych
+      - controller_data:/app/data
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Best Practice #6: Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      com.crypto-analysis.app: "controller"
+      com.crypto-analysis.version: "${APP_VERSION:-1.0.0}"
+
+  # ========================================================================
+  # 2. CRYPTO NODE - Python cryptography
+  # ========================================================================
+  crypto:
+    image: nastap/crypto:latest
+    container_name: crypto-crypto-node
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CONTROLLER_HOST: controller
+      CONTROLLER_PORT: 8000
+      ENVIRONMENT: "${ENVIRONMENT:-development}"
+    volumes:
+      - crypto_logs:/app/logs
+      - crypto_cache:/app/cache
+      - crypto_data:/app/data
+    networks:
+      - crypto_network
+    depends_on:
+      - controller
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      com.crypto-analysis.app: "crypto"
+      com.crypto-analysis.type: "python-cryptography"
+
+  # ========================================================================
+  # 3. PYCRYPTODOME NODE - Python PyCryptodome
+  # ========================================================================
+  pycryptodome:
+    image: nastap/pycryptodome:latest
+    container_name: crypto-pycryptodome-node
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CONTROLLER_HOST: controller
+      CONTROLLER_PORT: 8000
+      ENVIRONMENT: "${ENVIRONMENT:-development}"
+    volumes:
+      - pycryptodome_logs:/app/logs
+      - pycryptodome_cache:/app/cache
+      - pycryptodome_data:/app/data
+    networks:
+      - crypto_network
+    depends_on:
+      - controller
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      com.crypto-analysis.app: "pycryptodome"
+      com.crypto-analysis.type: "python-pycryptodome"
+
+  # ========================================================================
+  # 4. OPENSSL NODE - C++ OpenSSL
+  # ========================================================================
+  openssl:
+    image: nastap/openssl:latest
+    container_name: crypto-openssl-node
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CONTROLLER_HOST: controller
+      CONTROLLER_PORT: 8000
+      ENVIRONMENT: "${ENVIRONMENT:-development}"
+    volumes:
+      - openssl_logs:/app/logs
+      - openssl_cache:/app/cache
+      - openssl_data:/app/data
+    networks:
+      - crypto_network
+    depends_on:
+      - controller
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    labels:
+      com.crypto-analysis.app: "openssl"
+      com.crypto-analysis.type: "cpp-openssl"
+
+  # ========================================================================
+  # 5. CRYPTOPP NODE - C++ Crypto++
+  # ========================================================================
+  cryptopp:
+    image: nastap/cryptopp:latest
+    container_name: crypto-cryptopp-node
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CONTROLLER_HOST: controller
+      CONTROLLER_PORT: 8000
+      ENVIRONMENT: "${ENVIRONMENT:-development}"
+    volumes:
+      - cryptopp_logs:/app/logs
+      - cryptopp_data:/app/data
+    networks:
+      - crypto_network
+    depends_on:
+      - controller
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    labels:
+      com.crypto-analysis.app: "cryptopp"
+      com.crypto-analysis.type: "cpp-cryptopp"
+
+  # ========================================================================
+  # 6. REDIS - Cache & Message Broker
+  # ========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: crypto-redis
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD:-devpassword}"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      # Named volume dla persystencji
+      - redis_data:/data
+    networks:
+      - crypto_network
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    labels:
+      com.crypto-analysis.app: "redis"
+      com.crypto-analysis.type: "cache"
+
+# ============================================================================
+# VOLUMES - Best Practice #3: Named Volumes (15 total)
+# 
+# Zarządzane przez Docker, łatwe do backup'u, migracli i czyszczenia
+# ============================================================================
+volumes:
+  # Aplikacja Controller (2)
+  controller_logs:
+    driver: local
+  controller_cache:
+    driver: local
+  controller_data:
+    driver: local
+  
+  # Crypto Node (3)
+  crypto_logs:
+    driver: local
+  crypto_cache:
+    driver: local
+  crypto_data:
+    driver: local
+  
+  # PyCryptodome Node (3)
+  pycryptodome_logs:
+    driver: local
+  pycryptodome_cache:
+    driver: local
+  pycryptodome_data:
+    driver: local
+  
+  # OpenSSL Node (3)
+  openssl_logs:
+    driver: local
+  openssl_cache:
+    driver: local
+  openssl_data:
+    driver: local
+  
+  # Cryptopp Node (2)
+  cryptopp_logs:
+    driver: local
+  cryptopp_data:
+    driver: local
+  
+  # Redis Persistence (1)
+  redis_data:
+    driver: local
+
+# ============================================================================
+# NETWORKS - Best Practice #4: Custom Networks
+# 
+# Zapewnia izolację i komunikację między kontenerami przez nazwy
+# ============================================================================
+networks:
+  crypto_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: crypto_bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+    labels:
+      com.crypto-analysis.network: "main"
