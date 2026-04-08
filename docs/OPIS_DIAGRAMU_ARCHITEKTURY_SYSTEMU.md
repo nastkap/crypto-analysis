@@ -46,7 +46,7 @@ Ty jesteś dyrektorem laboratorium. Gdy otrzymujesz zlecenie od klienta, robisz:
 5. Porównujesz wyniki: kto był szybszy, kto był dokładniejszy
 6. Robisz notatki dla siebie
 
-To Ty, jako dyrektor, koordynujesz całą pracę. Portu 8000 to Twoje biuro, gdzie przyjmujesz klientów.
+To Ty, jako dyrektor, koordynujesz całą pracę. Port 8000 to Twoje biuro, gdzie przyjmujesz klientów.
 
 ---
 
@@ -98,7 +98,7 @@ Gdzie pracują: Biuro 4
 
 ## Czwarty poziom: Centralna poczta (Redis)
 
-W samym srodku budynku znajduje się centralna poczty. To Redis.
+W samym srodku budynku znajduje się centralna poczta. To Redis.
 
 Gdy ty, dyrektor, wydasz polecenie "Zaszyfuj to!", Redis:
 
