@@ -72,7 +72,7 @@ $trivy = "$trivyDir\trivy.exe"
 
 ---
 
-## Szczegółowa analiza zagrożeń 
+## Szczegółowa analiza zagrożeń
 
 
 
