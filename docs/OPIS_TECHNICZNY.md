@@ -32,33 +32,33 @@ Cały system jest konteneryzowany i orkiestrowany za pomocą Docker Compose v3.9
 - **Framework:** FastAPI (Python 3.11-slim)
 - **Port:** 8000 (internal)
 - **Cipher:** ECIES (Elliptic Curve Integrated Encryption Scheme)
-- **Healthcheck:** ✅ HTTP 200 OK
+- **Healthcheck:**  HTTP 200 OK
 
 #### node-py-pycryptodome
 - **Library:** PyCryptodome
 - **Framework:** FastAPI (Python 3.11-slim)
 - **Port:** 8000 (internal)
 - **Cipher:** ECIES
-- **Healthcheck:** ✅ HTTP 200 OK
+- **Healthcheck:**  HTTP 200 OK
 
 #### node-cpp-openssl
 - **Library:** OpenSSL 3.x
 - **Language:** C++17
-- **Base:** Ubuntu 22.04
+- **Base:** Alpine + C++17
 - **Port:** 8000 (internal)
 - **Cipher:** ECIES (evp pkey)
 - **Build:** Multi-stage (builder + runtime)
-- **Healthcheck:** ✅ File existence test
+- **Healthcheck:**  File existence test
 
 #### node-cpp-cryptopp
 - **Library:** Crypto++ v8.7.0 (built from source)
 - **Language:** C++17
-- **Base:** Ubuntu 22.04
+- **Base:** Alpine + C++17
 - **Port:** 8000 (internal)
 - **Cipher:** ECIES
 - **Build:** Multi-stage (builder + runtime)
 - **Dependencies:** hiredis (from source)
-- **Healthcheck:** ✅ File existence test
+- **Healthcheck:**  File existence test
 
 ### 3. Message Broker
 - **Type:** Redis (Alpine)
@@ -108,12 +108,12 @@ Oba węzły Python'a działają na tym samym podstawowym obrazie (python:3.11-sl
 Implementacja C++17 używająca OpenSSL 3.x (najnowsza wersja producenta). OpenSSL jest de facto standardem w industry do operacji kryptograficznych niskopoziomowych. ECIES w OpenSSL jest dostępny poprzez EVP API (Envelope encryption).
 
 Budowa tego kontenera jest multi-stage:
-- **Faza 1 (builder):** Ubuntu 22.04 + g++, build-essential, OpenSSL dev headers, wget, git
+- **Faza 1 (builder):** Alpine + C++17 + g++, build-essential, OpenSSL dev headers, wget, git
     - Ściąga hiredis (C client do Redis) z GitHub'a
     - Ściąga httplib (header-only C++ library do HTTP)
     - Kompiluje main.cpp z optymalizacją (-O2)
     - Linkuje z libssl, libcrypto, libhiredis, libpthread
-- **Faza 2 (runtime):** Ubuntu 22.04 (minimal install)
+- **Faza 2 (runtime):** Alpine (minimal install)
     - Kopiuje tylko skompilowany binarny plik `/app/server`
     - Kopiuje dynaiczne biblioteki kryptograficzne (libssl.so.3, libcrypto.so.3)
     - Usuwa wszystkie dev tools aby zmniejszyć rozmiar obrazu
@@ -124,12 +124,12 @@ Budowa tego kontenera jest multi-stage:
 Implementacja C++17 używająca biblioteki Crypto++ (Wei Dai's cryptographic library). Crypto++ jest jedną z najpopularniejszych pure-C++ bibliotek kryptograficznych (bez zależności C).
 
 Proces budowania kontenerów C++ jest bardziej złożony niż Python ponieważ wymaga:
-1. Pobrania source code Crypto++ (nie dostępny bezpośrednio w Ubuntu 22.04 repo)
+1. Pobrania source code Crypto++ (nie dostępny bezpośrednio w Alpine repo)
 2. Rozpakowania i kompilacji z źródła
 3. Instalacji bibliotek w `/usr/local/lib`
 4. Konfiguracji LD_LIBRARY_PATH / ldconfig aby runtime mógł znaleźć biblioteki
 
-Hiredis jest również budowany z źródła ponieważ wersja w Ubuntu 22.04 jest stara. Health check dla C++ węzłów to prosty test istnienia pliku (`test -f /app/server`) zamiast HTTP curl ponieważ:
+Hiredis jest również budowany z źródła ponieważ wersja dostępna w Alpine repo jest stara. Health check dla C++ węzłów to prosty test istnienia pliku (`test -f /app/server`) zamiast HTTP curl ponieważ:
 - curl nie jest dostępny w minimalnym runtime obrazie
 - Test istnienia pliku jest szybszy i nie wymaga sieciowego callout'a
 - File-based health check jest wystarczającym dla weryfikacji że binarny został poprawnie skopiowany
