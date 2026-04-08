@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Skrypt do skanowania wszystkich obrazów Docker za pomocą Trivy
-i generowania raportu podatności (Warunek 4)
+i generowania raportu podatności
 """
 
 import subprocess
