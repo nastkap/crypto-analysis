@@ -68,10 +68,12 @@ Cały system jest konteneryzowany i orkiestrowany za pomocą Docker Compose v3.9
     - Task queue dla szyfrowania
     - Przechowywanie wyników operacji
 - **Healthcheck:** Not configured (stable, verified via PING)
+  
+---
 
-### Szczegółowy Opis Komponentów
+### Szczegółowy opis komponentów
 
-#### Benchmark Controller - Szczegółowo
+#### Benchmark Controller 
 Kontroler benchmark'u napisany w FastAPI (architektura asynchroniczna, pełne wsparcie dla async/await) nasłuchuje na porcie 8000. Jest to główny punkt wejścia do całego systemu. Kontroler nie wykonuje żadnych operacji kryptograficznych sam - zamiast tego kieruje żądania HTTP do dostępnych węzłów.
 
 Po otrzymaniu żądania POST do `/encrypt` lub `/decrypt`, kontroler:
@@ -83,7 +85,7 @@ Po otrzymaniu żądania POST do `/encrypt` lub `/decrypt`, kontroler:
 
 Health check na kontrolerze działa poprzez prosty test HTTPlib - Docker co 30 sekund wysyła GET /health, jeśli odpowiedź to 200 OK, kontener jest oznaczany jako "(healthy)". Jeśli brak odpowiedzi lub inny kod (500, 404 itp.), kontener przechodzi w stan "(unhealthy)". W moim systemie kontroler konsystentnie odpowiada 200 OK, co potwierdza jego stabilność.
 
-#### Węzły Szyfrowania - Wspólna Logika
+#### Węzły szyfrowania - wspólna logika
 Wszystkie cztery węzły (2 Python, 2 C++) implementują ten sam interfejs API REST. Po uruchomieniu każdy węzeł:
 1. Inicjalizuje bibliotekę kryptograficzną (OpenSSL, Crypto++, cryptography, PyCryptodome)
 2. Generuje parę kluczy ECIES (klucz prywatny przechowywany lokalnie w pamięci)
@@ -136,7 +138,7 @@ Hiredis jest również budowany z źródła ponieważ wersja dostępna w Alpine 
 
 ---
 
-### 3.a Message Broker - Redis (Szczegółowo)
+### Message Broker - Redis 
 
 Redis pełni funkcję centralnego magazynu danych i systemu komunikacyjnego między węzłami. Uruchamiany ze standardowego obrazu redis:alpine (bardzo lekki, ~10MB), Redis nasłuchuje na porcie 6379 zarówno wewnątrz sieci Docker'a (dostęp z poziomu innych kontenerów) jak i na interface hosta (0.0.0.0:6379, dla dostępu z CLI oraz testów).
 
@@ -156,8 +158,7 @@ Status kontenereru Redis w `docker-compose ps` pokazuje "Up" (bez health status)
 
 
 
-## Komunikacja i Przepływ Danych
-
+## Komunikacja i przepływ danych
 
 Wszystkie sześć kontenerów (5 aplikacyjnych + 1 Redis) są połączone w pojedynczej sieci bridge Docker'a o nazwie `crypto-analysis_crypto-net` z CIDR `172.23.0.0/16`. W sieci tej Docker utrzymuje wbudowany DNS server, co oznacza że kontenery mogą się odwoływać do siebie po nazwie serwisu (np. `redis://message-broker:6379` automatycznie resolv'uje się do IP kontenera message-brokera).
 
