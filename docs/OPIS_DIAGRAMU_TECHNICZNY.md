@@ -2,7 +2,7 @@
 
 ## Architektura i przepływ systemu
 
-System bezpiecznej wymiany wiadomości ECIES (Elliptic Curve Integrated Encryption Scheme) zbudowany jest w oparciu o architekturę mikrousług. Jego głównym zadaniem jest umożliwienie porównania wydajności i poprawności implementacji szyfru ECIES w czterech różnych bibliotekach kryptograficznych: dwóch na Pythonie (cryptography i PyCryptodome) oraz dwóch na C++ (OpenSSL i Crypto++).
+System bezpiecznej wymiany wiadomości ECIES (Elliptic Curve Integrated Encryption Scheme) zbudowany jest w oparciu o architekturę mikrousług. Jego głównym zadaniem jest umożliwienie porównania wydajności, skalowalności i stabilności czterech różnych biblioteki kryptograficznych: dwóch na Pythonie (cryptography i PyCryptodome) oraz dwóch na C++ (OpenSSL i Crypto++).
 
 Centralnym orchestratorem całego systemu jest kontroler benchmark'u, który pełni rolę bramy HTTP i routera żądań. Wszystkie żądania od klienta trafiają do controllera, který następnie kieruje je do dostępnych węzłów szyfrowania. Każdy węzeł implementuje ten sam interfejs (FastAPI dla Pythona, httplib dla C++), ale używa innej biblioteki do faktycznego szyfrowania danych.
 
