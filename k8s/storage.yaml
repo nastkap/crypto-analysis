@@ -1,0 +1,42 @@
+---
+# StorageClass - Definiuje typ przechowywania
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: crypto-storage
+provisioner: k8s.io/minikube-hostpath
+# W Minikube używamy wbudowanego provisionera hostpath
+# W produkcji (np. EKS, AKS, GKE) zmienić na odpowiedni provisioner
+parameters:
+  type: Directory
+allowVolumeExpansion: true
+
+---
+# PersistentVolumeClaim - Żądanie miejsca na dysku dla PostgreSQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: crypto-perf
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: crypto-storage
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+# PersistentVolumeClaim - Żądanie miejsca na dysku dla Redis (opcjonalne, ale zalecane)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: crypto-perf
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: crypto-storage
+  resources:
+    requests:
+      storage: 1Gi

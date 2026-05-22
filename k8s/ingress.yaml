@@ -1,0 +1,81 @@
+---
+# Ingress - Pozwala na dostęp do aplikacji z zewnątrz klastra
+# UWAGA: Wymaga zainstalowanego Ingress Controller (np. nginx-ingress w Minikube)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: crypto-ingress
+  namespace: crypto-perf
+  annotations:
+    # Dla Minikube nginx ingress controller
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+spec:
+  ingressClassName: nginx
+  rules:
+  # Frontend (React UI)
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 3000
+
+  # Controller API
+  - host: localhost
+    http:
+      paths:
+      - path: /api/benchmark
+        pathType: Prefix
+        backend:
+          service:
+            name: benchmark-controller
+            port:
+              number: 8000
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: benchmark-controller
+            port:
+              number: 8000
+
+  # Węzły szyfrowania (routing do różnych węzłów)
+  - host: localhost
+    http:
+      paths:
+      - path: /api/node-py-crypto
+        pathType: Prefix
+        backend:
+          service:
+            name: node-py-crypto
+            port:
+              number: 8000
+      - path: /api/node-py-pycryptodome
+        pathType: Prefix
+        backend:
+          service:
+            name: node-py-pycryptodome
+            port:
+              number: 8000
+      - path: /api/node-cpp-openssl
+        pathType: Prefix
+        backend:
+          service:
+            name: node-cpp-openssl
+            port:
+              number: 8000
+      - path: /api/node-cpp-cryptopp
+        pathType: Prefix
+        backend:
+          service:
+            name: node-cpp-cryptopp
+            port:
+              number: 8000
+

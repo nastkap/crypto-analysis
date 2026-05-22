@@ -1,0 +1,490 @@
+---
+# Node Affinity Example - dla C++ węzłów (compute-heavy)
+# Preferes nodes labeled with node-type=compute
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-cpp-openssl-affinity
+  namespace: crypto-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-cpp-openssl-affinity
+  template:
+    metadata:
+      labels:
+        app: node-cpp-openssl-affinity
+    spec:
+      # Node Affinity - preferuje nodes z labelem node-type=compute
+      affinity:
+        nodeAffinity:
+          # Preferred (soft constraint - best effort)
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - compute-optimized
+          # Required (hard constraint - must have)
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      
+      containers:
+      - name: node-cpp-openssl
+        image: nastap/openssl:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 300m
+            memory: 512Mi
+          limits:
+            cpu: 1500m
+            memory: 2Gi
+
+---
+# Pod Affinity - umieść Python nodes blisko siebie (co-locate)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-py-crypto-pod-affinity
+  namespace: crypto-perf
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-py-crypto-pod-affinity
+  template:
+    metadata:
+      labels:
+        app: node-py-crypto-pod-affinity
+        tier: crypto-node
+    spec:
+      affinity:
+        podAffinity:
+          # Preferuj nodes gdzie już są andere Python nodes
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: tier
+                  operator: In
+                  values:
+                  - crypto-node
+              topologyKey: kubernetes.io/hostname  # Same node
+        
+        # Unikaj umieszczania C++ nodes na tym samym node
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            podAntiAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - node-cpp-openssl
+                  - node-cpp-cryptopp
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: node-py-crypto
+        image: nastap/crypto:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# Pod Anti-Affinity - rozłóż repliki na różne nodes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: benchmark-controller-spread
+  namespace: crypto-perf
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: benchmark-controller-spread
+  template:
+    metadata:
+      labels:
+        app: benchmark-controller-spread
+    spec:
+      affinity:
+        podAntiAffinity:
+          # Hard constraint - każda replika na innym node
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - benchmark-controller-spread
+            topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: benchmark-controller
+        image: nastap/controller:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# Taints i Tolerations - dedykuj node dla CPU-intensive workloads
+# 
+# SETUP (na node):
+# kubectl taint nodes node-1 workload=compute:NoSchedule
+# kubectl label nodes node-1 node-type=compute-optimized
+#
+# Pod z taką toleracją może się tam umieścić
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-cpp-cryptopp-taint-tolerance
+  namespace: crypto-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-cpp-cryptopp-taint-tolerance
+  template:
+    metadata:
+      labels:
+        app: node-cpp-cryptopp-taint-tolerance
+    spec:
+      # Toleracja dla taint: workload=compute:NoSchedule
+      tolerations:
+      - key: workload
+        operator: Equal
+        value: compute
+        effect: NoSchedule
+      
+      # Node Affinity - preferuj nodes z takim labelem
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - compute-optimized
+      
+      containers:
+      - name: node-cpp-cryptopp
+        image: nastap/cryptopp:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 300m
+            memory: 512Mi
+          limits:
+            cpu: 1500m
+            memory: 2Gi
+
+---
+# Pod Disruption Budget - Controller replicas
+# Minimum 2 replicas dostępne (dla HA)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: controller-pdb
+  namespace: crypto-perf
+spec:
+  minAvailable: 2  # Min 2 controllery muszą być dostępne
+  selector:
+    matchLabels:
+      app: benchmark-controller
+
+---
+# Pod Disruption Budget - Crypto Nodes
+# Minimum 2 nodes muszą być dostępne
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: crypto-nodes-pdb
+  namespace: crypto-perf
+spec:
+  minAvailable: 2  # Min 2 crypto nodes dostępne
+  selector:
+    matchLabels:
+      component: crypto-node
+
+---
+# Pod Disruption Budget - PostgreSQL
+# Nie można wyłączyć bazy (1 replika)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: crypto-perf
+spec:
+  maxUnavailable: 0  # Zero disruptions allowed (DB critical)
+  selector:
+    matchLabels:
+      app: postgres
+
+---
+# Pod Disruption Budget - Redis
+# Message broker - minimum 1 dostępny
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: crypto-perf
+spec:
+  minAvailable: 1  # Min 1 Redis dostępny
+  selector:
+    matchLabels:
+      app: message-broker
+
+---
+# Topology Spread Constraints - rozprzestrzeniaj pody równomiernie
+# (K8s 1.19+, bardziej zaawansowany niż pod anti-affinity)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-topology-spread
+  namespace: crypto-perf
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: controller-topology-spread
+  template:
+    metadata:
+      labels:
+        app: controller-topology-spread
+    spec:
+      # Rozprzestrzeniaj repliki równomiernie na różne nodes (zones)
+      topologySpreadConstraints:
+      - maxSkew: 1               # Max 1 pod różnicy między nodes
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: controller-topology-spread
+      
+      # Jeśli multi-zone setup
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway  # Best effort dla zones
+        labelSelector:
+          matchLabels:
+            app: controller-topology-spread
+      
+      containers:
+      - name: controller
+        image: nastap/controller:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# Node Selector - prostsza alternatywa dla Node Affinity
+# (jeśli labels są wystarczające)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-cpp-openssl-node-selector
+  namespace: crypto-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-cpp-openssl-node-selector
+  template:
+    metadata:
+      labels:
+        app: node-cpp-openssl-node-selector
+    spec:
+      # Simple node selection
+      nodeSelector:
+        node-type: compute-optimized
+        kubernetes.io/os: linux
+      
+      containers:
+      - name: node-cpp-openssl
+        image: nastap/openssl:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 300m
+            memory: 512Mi
+          limits:
+            cpu: 1500m
+            memory: 2Gi
+
+---
+# Complex Affinity Rules - łączy Node + Pod affinity
+# (production-grade example)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-py-pycryptodome-complex
+  namespace: crypto-perf
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-py-pycryptodome-complex
+  template:
+    metadata:
+      labels:
+        app: node-py-pycryptodome-complex
+        tier: crypto-node
+        workload: python
+    spec:
+      affinity:
+        # Node Affinity - multi-level (OR between terms)
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          # First preference: compute-optimized nodes
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - compute-optimized
+          # Second preference: memory-optimized nodes
+          - weight: 50
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - memory-optimized
+          # Soft requirement: Linux OS
+          - weight: 10
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+        
+        # Pod Affinity - cluster with other Python nodes
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  workload: python
+              topologyKey: kubernetes.io/hostname
+        
+        # Pod Anti-Affinity - spread from C++ nodes
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAntiAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: workload
+                  operator: In
+                  values:
+                  - cpp
+              topologyKey: kubernetes.io/hostname
+      
+      containers:
+      - name: node-py-pycryptodome
+        image: nastap/pycryptodome:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# Multiple Taints - dedykuj node dla wiele workload types
+# 
+# SETUP:
+# kubectl taint nodes node-1 workload=compute:NoSchedule gpu=true:NoExecute
+# kubectl label nodes node-1 node-type=compute-gpu
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-compute-workload
+  namespace: crypto-perf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-compute-workload
+  template:
+    metadata:
+      labels:
+        app: gpu-compute-workload
+    spec:
+      # Tolerancje dla multiple taints
+      tolerations:
+      # Tolerate compute taint (NoSchedule - possible to evict)
+      - key: workload
+        operator: Equal
+        value: compute
+        effect: NoSchedule
+      
+      # Tolerate GPU taint (NoExecute - will be evicted at timeout)
+      - key: gpu
+        operator: Equal
+        value: "true"
+        effect: NoExecute
+        tolerationSeconds: 3600  # 1 hour before eviction
+      
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - compute-gpu
+      
+      containers:
+      - name: gpu-workload
+        image: nastap/gpu-compute:latest
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi

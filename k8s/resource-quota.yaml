@@ -1,0 +1,63 @@
+---
+# Resource Quota - Limituje zasoby dla całego namespace crypto-perf
+# Zapobiega nadmiernemu zużyciu zasobów przez cały system
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: crypto-quota
+  namespace: crypto-perf
+  labels:
+    app: crypto-system
+spec:
+  hard:
+    # CPU limits
+    requests.cpu: "4"              # Total CPU requested w namespace
+    limits.cpu: "12"                # Total CPU limit w namespace
+    
+    # Memory limits
+    requests.memory: "8Gi"       # Total RAM requested
+    limits.memory: "20Gi"          # Total RAM limit
+    
+    # Pod count
+    pods: "20"                     # Maximum number of pods
+    
+    # Services
+    services: "10"                 # Maximum services
+    services.loadbalancers: "2"    # Max LoadBalancer services
+    
+    # Persistent Volumes
+    persistentvolumeclaims: "5"    # Max PVCs
+
+---
+# Limits Range - Default resource requests/limits dla podów bez specyfiki
+# (safety net - each pod musi mieć limits jeśli nie zadeklaruje)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: crypto-limits
+  namespace: crypto-perf
+spec:
+  limits:
+  # Container limits
+  - type: Container
+    default:        # Applied if pod doesn't specify
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:            # Minimum allowed
+      cpu: 10m
+      memory: 32Mi
+    max:            # Maximum allowed
+      cpu: 4000m
+      memory: 8Gi
+  
+  # Pod limits (sum of containers)
+  - type: Pod
+    max:
+      cpu: 4000m
+      memory: 8Gi
+    min:
+      cpu: 10m
+      memory: 32Mi

@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace dla całego systemu
+namespace: crypto-perf
+
+# Zasoby do wdrożenia (kolejność ma znaczenie)
+resources:
+  # Core setup
+  - namespace.yaml
+  - rbac.yaml
+  
+  # Configuration & Storage
+  - configmap-secrets.yaml
+  - storage.yaml
+  - resource-quota.yaml
+  
+  # Databases & Brokers
+  - postgres.yaml
+  - redis.yaml
+  
+  # Application Components
+  - nodes.yaml
+  - frontend.yaml
+  
+  # Networking & Ingress
+  - ingress.yaml
+  - network-policy.yaml
+  
+  # Scheduling & Affinity (optional - examples)
+  # - node-affinity.yaml
+
+# Etykiety dodawane do wszystkich zasobów
+commonLabels:
+  app.kubernetes.io/name: crypto-system
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/managed-by: kustomize
+
+# Adnotacje dodawane do wszystkich zasobów
+commonAnnotations:
+  description: "ECIES Crypto Performance Benchmark System"
+  documentation: "See KUBERNETES_ARCHITECTURE.md"

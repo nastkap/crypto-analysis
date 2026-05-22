@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stability Report - Python_Cryptography</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f2ea;
+      --ink: #1b1f24;
+      --muted: #5d6672;
+      --panel: #fffdf8;
+      --line: #e9e2d3;
+      --shadow: 0 14px 32px rgba(39, 33, 18, 0.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #ece7db 0%, transparent 40%),
+        radial-gradient(circle at 100% 100%, #efe9da 0%, transparent 35%),
+        var(--bg);
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 16px 40px; }
+    .hero {
+      background: linear-gradient(120deg, #fcf6e7 0%, #fffdf7 40%, #eef6f5 100%);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(1.4rem, 2.5vw, 2rem); }
+    .subtitle { margin: 0; color: var(--muted); }
+    .badge { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; display: inline-block; margin-top: 10px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    .card {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 { margin: 0 0 16px; font-size: 1.1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: rgba(27, 31, 36, 0.05); font-weight: 600; }
+    tr:hover { background: rgba(27, 31, 36, 0.02); }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 2px 8px;
+      background: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+    }
+    .metric-good { color: #1c7c7d; font-weight: 600; }
+    .metric-warn { color: #a57c1b; font-weight: 600; }
+    .metric-bad { color: #c1482e; font-weight: 600; }
+    canvas { max-height: 300px; }
+    .payload-section { margin-bottom: 24px; }
+    @media (max-width: 900px) {
+      th, td { padding: 8px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Stability Test Report</h1>
+      <p class="subtitle"><strong>Python_Cryptography</strong> - porównanie wyników między powtórzeniami (repeaty)</p>
+      <span class="badge">Payloads: 1B, 10MB, 100MB</span>
+    </section>
+
+    <div class="grid">
+
+      <section class="payload-section">
+        <div class="card">
+          <h2>Payload: 1B</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Iteracje</th>
+                <th>p95 [ms]</th>
+                <th>Throughput [req/s]</th>
+                <th>Fail [%]</th>
+                <th>Mismatch [%]</th>
+              </tr>
+            </thead>
+            <tbody>
+
+      <tr>
+        <td>Repeat 1</td>
+        <td>9351</td>
+        <td>410.91</td>
+        <td>62.24</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 2</td>
+        <td>9921</td>
+        <td>398.53</td>
+        <td>66.04</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 3</td>
+        <td>9750</td>
+        <td>400.84</td>
+        <td>64.91</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Wykresy: 1B</h2>
+          <canvas id="chart-1"></canvas>
+        </div>
+      </section>
+
+      <section class="payload-section">
+        <div class="card">
+          <h2>Payload: 10MB</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Iteracje</th>
+                <th>p95 [ms]</th>
+                <th>Throughput [req/s]</th>
+                <th>Fail [%]</th>
+                <th>Mismatch [%]</th>
+              </tr>
+            </thead>
+            <tbody>
+
+      <tr>
+        <td>Repeat 1</td>
+        <td>242</td>
+        <td>3526.12</td>
+        <td>1.59</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 2</td>
+        <td>338</td>
+        <td>2282.36</td>
+        <td>2.23</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 3</td>
+        <td>333</td>
+        <td>2313.26</td>
+        <td>2.20</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Wykresy: 10MB</h2>
+          <canvas id="chart-10485760"></canvas>
+        </div>
+      </section>
+
+      <section class="payload-section">
+        <div class="card">
+          <h2>Payload: 100MB</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Iteracje</th>
+                <th>p95 [ms]</th>
+                <th>Throughput [req/s]</th>
+                <th>Fail [%]</th>
+                <th>Mismatch [%]</th>
+              </tr>
+            </thead>
+            <tbody>
+
+      <tr>
+        <td>Repeat 1</td>
+        <td>9</td>
+        <td>16767.83</td>
+        <td>0.06</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 2</td>
+        <td>12</td>
+        <td>16315.17</td>
+        <td>0.07</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+      <tr>
+        <td>Repeat 3</td>
+        <td>9</td>
+        <td>17176.94</td>
+        <td>0.06</td>
+        <td class="metric-good">0.0000%</td>
+        <td class="metric-good">0.0000%</td>
+      </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Wykresy: 100MB</h2>
+          <canvas id="chart-104857600"></canvas>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+<script>
+
+const ctx1 = document.getElementById('chart-1').getContext('2d');
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: ["r1", "r2", "r3"],
+    datasets: [
+      {
+        label: 'p95 [ms]',
+        data: [410.90654999999987, 398.52708, 400.8365],
+        borderColor: '#1c7c7d',
+        backgroundColor: 'rgba(28, 124, 125, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Fail [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#c1482e',
+        backgroundColor: 'rgba(193, 72, 46, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Mismatch [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#a57c1b',
+        backgroundColor: 'rgba(165, 124, 27, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: { display: true, text: 'p95 [ms]' },
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: { display: true, text: 'Fail / Mismatch [%]' },
+        grid: { drawOnChartArea: false },
+      },
+    },
+    plugins: {
+      legend: { position: 'top' },
+    },
+  },
+});
+
+const ctx10485760 = document.getElementById('chart-10485760').getContext('2d');
+new Chart(ctx10485760, {
+  type: 'line',
+  data: {
+    labels: ["r1", "r2", "r3"],
+    datasets: [
+      {
+        label: 'p95 [ms]',
+        data: [3526.1228199999996, 2282.3562, 2313.2616199999998],
+        borderColor: '#1c7c7d',
+        backgroundColor: 'rgba(28, 124, 125, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Fail [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#c1482e',
+        backgroundColor: 'rgba(193, 72, 46, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Mismatch [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#a57c1b',
+        backgroundColor: 'rgba(165, 124, 27, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: { display: true, text: 'p95 [ms]' },
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: { display: true, text: 'Fail / Mismatch [%]' },
+        grid: { drawOnChartArea: false },
+      },
+    },
+    plugins: {
+      legend: { position: 'top' },
+    },
+  },
+});
+
+const ctx104857600 = document.getElementById('chart-104857600').getContext('2d');
+new Chart(ctx104857600, {
+  type: 'line',
+  data: {
+    labels: ["r1", "r2", "r3"],
+    datasets: [
+      {
+        label: 'p95 [ms]',
+        data: [16767.829289999998, 16315.170935, 17176.94238],
+        borderColor: '#1c7c7d',
+        backgroundColor: 'rgba(28, 124, 125, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Fail [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#c1482e',
+        backgroundColor: 'rgba(193, 72, 46, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Mismatch [%]',
+        data: [0.0, 0.0, 0.0],
+        borderColor: '#a57c1b',
+        backgroundColor: 'rgba(165, 124, 27, 0.1)',
+        tension: 0.3,
+        yAxisID: 'y1',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: { display: true, text: 'p95 [ms]' },
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: { display: true, text: 'Fail / Mismatch [%]' },
+        grid: { drawOnChartArea: false },
+      },
+    },
+    plugins: {
+      legend: { position: 'top' },
+    },
+  },
+});
+
+</script>
+</body>
+</html>

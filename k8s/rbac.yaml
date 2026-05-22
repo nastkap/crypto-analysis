@@ -1,0 +1,52 @@
+---
+# ServiceAccount - Tożsamość dla podów
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crypto-system
+  namespace: crypto-perf
+  labels:
+    app: crypto-system
+
+---
+# ClusterRole - Uprawnienia dla crypto-system
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crypto-system-role
+  labels:
+    app: crypto-system
+rules:
+# Dostęp do ConfigMaps i Secrets
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+# Dostęp do PVCs
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+# Dostęp do Services (discovery)
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+# Dostęp do Pods (do obserwacji stanu)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding - Przypisanie roli do ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crypto-system-binding
+  labels:
+    app: crypto-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: crypto-system-role
+subjects:
+- kind: ServiceAccount
+  name: crypto-system
+  namespace: crypto-perf

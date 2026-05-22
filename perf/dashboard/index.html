@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f2ea;
+      --ink: #1b1f24;
+      --muted: #5d6672;
+      --panel: #fffdf8;
+      --line: #e9e2d3;
+      --shadow: 0 14px 32px rgba(39, 33, 18, 0.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #ece7db 0%, transparent 40%),
+        radial-gradient(circle at 100% 100%, #efe9da 0%, transparent 35%),
+        var(--bg);
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 40px; }
+    .hero {
+      background: linear-gradient(120deg, #fcf6e7 0%, #fffdf7 40%, #eef6f5 100%);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(1.4rem, 2.5vw, 2rem); }
+    .subtitle { margin: 0; color: var(--muted); }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .badge {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+    .controls-row { display: flex; gap: 16px; margin: 16px 0 20px; flex-wrap: wrap; align-items: center; }
+    .link-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .link-card {
+      display: block;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      text-decoration: none;
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .link-card:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(39, 33, 18, 0.12); }
+    .link-card span { display: block; font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .control-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .control-group label { font-weight: 600; font-size: 14px; }
+    .toggle {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .toggle.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    select {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .stat h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+    .stat .value { font-size: 18px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .card {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 2px 8px;
+      background: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+    }
+    .empty { color: var(--muted); font-style: italic; }
+    .hidden { display: none; }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: 1fr; }
+      .controls-row { flex-direction: column; align-items: flex-start; }
+      .link-grid { grid-template-columns: 1fr; }
+      th, td { padding: 7px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Crypto Benchmark Dashboard</h1>
+      <p class="subtitle">Porownanie bibliotek dla payloadow 1B, 10MB i 100MB. Widok gotowy pod sprawozdanie.</p>
+      <div class="badge-row">
+        <span class="badge">Wykresy: p95, throughput, fail rate</span>
+        <span class="badge">Tryby: wydajnosc / stabilnosc / skalowalnosc</span>
+        <span class="badge" id="recordsBadge">Rekordy: 0</span>
+      </div>
+      <div class="link-grid">
+        <a class="link-card" href="performance-report.html">
+          Performance Report
+          <span>Szczegolowe metryki p50/p95/p99</span>
+        </a>
+        <a class="link-card" href="stability-report.html">
+          Stability Report
+          <span>Powtorzenia, fail rate, mismatch</span>
+        </a>
+        <a class="link-card" href="scalability-report.html">
+          Scalability Report
+          <span>Ramping VU i punkt zalamania</span>
+        </a>
+      </div>
+    </section>
+
+    <div class="controls-row">
+      <div class="control-group" id="testTypeToggle"></div>
+      <div class="control-group" id="librarySelector"></div>
+    </div>
+
+    <section class="stats">
+      <article class="stat">
+        <h3>Najszybsza biblioteka (p95)</h3>
+        <div class="value" id="bestLatency">-</div>
+      </article>
+      <article class="stat">
+        <h3>Najwyzszy throughput</h3>
+        <div class="value" id="bestThroughput">-</div>
+      </article>
+      <article class="stat">
+        <h3>Najbardziej niezawodna</h3>
+        <div class="value" id="mostReliable">-</div>
+      </article>
+    </section>
+
+    <div class="grid">
+      <div class="card" id="p95CardWrapper">
+        <h2>p95 czasu odpowiedzi [ms]</h2>
+        <canvas id="p95Chart"></canvas>
+      </div>
+      <div class="card" id="throughputCardWrapper">
+        <h2>Throughput [req/s]</h2>
+        <canvas id="throughputChart"></canvas>
+      </div>
+      <div class="card" id="failCardWrapper">
+        <h2>Fail rate [%]</h2>
+        <canvas id="failChart"></canvas>
+      </div>
+      <div class="card">
+        <h2>Tabela agregowana</h2>
+        <div id="tableContainer"></div>
+      </div>
+      <div class="card hidden" id="perLibraryTableCard">
+        <h2>Szczegoly per repeat (Stability)</h2>
+        <div id="perLibraryTableContainer"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const rows = [{"test_type": "performance", "node": "CPP_CryptoPP", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 17.484385477577387, "http_req_duration_p95_avg": 50.09096999999999, "http_req_duration_p95_min": 50.09096999999999, "http_req_duration_p95_max": 50.09096999999999, "http_reqs_rate_avg": 294.0584095653943, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 4.909737801153701, "decrypt_duration_avg": 30.0605066960751, "latest_timestamp": "20260502-023134"}, {"test_type": "performance", "node": "CPP_OpenSSL", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 15.457273994843899, "http_req_duration_p95_avg": 47.63735, "http_req_duration_p95_min": 47.63735, "http_req_duration_p95_max": 47.63735, "http_reqs_rate_avg": 303.0470127946495, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2.826012517827761, "decrypt_duration_avg": 28.088172737246296, "latest_timestamp": "20260502-022758"}, {"test_type": "performance", "node": "Python_Cryptography", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 273.20895320461244, "http_req_duration_p95_avg": 476.66185999999993, "http_req_duration_p95_min": 476.66185999999993, "http_req_duration_p95_max": 476.66185999999993, "http_reqs_rate_avg": 61.56006344816953, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 319.2601121244633, "decrypt_duration_avg": 227.22104152360512, "latest_timestamp": "20260502-022104"}, {"test_type": "performance", "node": "Python_PyCryptodome", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 2345.9175201565527, "http_req_duration_p95_avg": 5245.93505, "http_req_duration_p95_min": 5245.93505, "http_req_duration_p95_max": 5245.93505, "http_reqs_rate_avg": 8.236851101535134, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2836.255591764706, "decrypt_duration_avg": 1864.6465576470582, "latest_timestamp": "20260502-022432"}, {"test_type": "performance", "node": "CPP_CryptoPP", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 3526.9185670886063, "http_req_duration_p95_avg": 4204.44424, "http_req_duration_p95_min": 4204.44424, "http_req_duration_p95_max": 4204.44424, "http_reqs_rate_avg": 1.255437219138035, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 3674.5618256410257, "decrypt_duration_avg": 3469.6487487179484, "latest_timestamp": "20260502-023234"}, {"test_type": "performance", "node": "CPP_OpenSSL", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 3274.8814988505756, "http_req_duration_p95_avg": 3928.72841, "http_req_duration_p95_min": 3928.72841, "http_req_duration_p95_max": 3928.72841, "http_reqs_rate_avg": 1.3392941694048472, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 3492.9287116279065, "decrypt_duration_avg": 3132.9338069767446, "latest_timestamp": "20260502-022859"}, {"test_type": "performance", "node": "Python_Cryptography", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 2843.126138613861, "http_req_duration_p95_avg": 3890.2876, "http_req_duration_p95_min": 3890.2876, "http_req_duration_p95_max": 3890.2876, "http_reqs_rate_avg": 1.5361624099281816, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 3121.8596839999996, "decrypt_duration_avg": 2621.149322, "latest_timestamp": "20260502-022206"}, {"test_type": "performance", "node": "Python_PyCryptodome", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 2783.091010891089, "http_req_duration_p95_avg": 3898.4091, "http_req_duration_p95_min": 3898.4091, "http_req_duration_p95_max": 3898.4091, "http_reqs_rate_avg": 1.5755088675254738, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2900.2205300000005, "decrypt_duration_avg": 2720.504604, "latest_timestamp": "20260502-022534"}, {"test_type": "performance", "node": "CPP_CryptoPP", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 9773.87848, "http_req_duration_p95_avg": 13021.33456, "http_req_duration_p95_min": 13021.33456, "http_req_duration_p95_max": 13021.33456, "http_reqs_rate_avg": 0.07952561772959009, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 11695.823049999999, "decrypt_duration_avg": 12737.631099999999, "latest_timestamp": "20260502-023338"}, {"test_type": "performance", "node": "CPP_OpenSSL", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 9207.9599, "http_req_duration_p95_avg": 10959.20035, "http_req_duration_p95_min": 10959.20035, "http_req_duration_p95_max": 10959.20035, "http_reqs_rate_avg": 0.08372382494069187, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 10569.238133333334, "decrypt_duration_avg": 10915.172533333332, "latest_timestamp": "20260502-023005"}, {"test_type": "performance", "node": "Python_Cryptography", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 12114.29558, "http_req_duration_p95_avg": 18567.803079999998, "http_req_duration_p95_min": 18567.803079999998, "http_req_duration_p95_max": 18567.803079999998, "http_reqs_rate_avg": 0.06714070610234318, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 17025.66475, "decrypt_duration_avg": 13227.448049999999, "latest_timestamp": "20260502-022312"}, {"test_type": "performance", "node": "Python_PyCryptodome", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 12195.769260000001, "http_req_duration_p95_avg": 16504.25704, "http_req_duration_p95_min": 16504.25704, "http_req_duration_p95_max": 16504.25704, "http_reqs_rate_avg": 0.06715463137972658, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 16225.835350000001, "decrypt_duration_avg": 14252.1944, "latest_timestamp": "20260502-022639"}, {"test_type": "scalability", "node": "CPP_CryptoPP", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 17.832719325297195, "http_req_duration_p95_avg": 50.73842, "http_req_duration_p95_min": 50.73842, "http_req_duration_p95_max": 50.73842, "http_reqs_rate_avg": 233.37578395162905, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-020812"}, {"test_type": "scalability", "node": "CPP_OpenSSL", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 15.439463963449475, "http_req_duration_p95_avg": 48.06742, "http_req_duration_p95_min": 48.06742, "http_req_duration_p95_max": 48.06742, "http_reqs_rate_avg": 241.6055086912418, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-015703"}, {"test_type": "scalability", "node": "Python_Cryptography", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 180.39896727923502, "http_req_duration_p95_avg": 475.00082, "http_req_duration_p95_min": 475.00082, "http_req_duration_p95_max": 475.00082, "http_reqs_rate_avg": 69.15270022681844, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260501-025149"}, {"test_type": "scalability", "node": "Python_PyCryptodome", "payload_bytes": 1, "payload_label": "1B", "runs": 1, "http_req_duration_avg": 1499.1147953245563, "http_req_duration_p95_avg": 5703.96881, "http_req_duration_p95_min": 5703.96881, "http_req_duration_p95_max": 5703.96881, "http_reqs_rate_avg": 10.485104197269786, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-014516"}, {"test_type": "scalability", "node": "CPP_CryptoPP", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 10421.066300634924, "http_req_duration_p95_avg": 34776.5412, "http_req_duration_p95_min": 34776.5412, "http_req_duration_p95_max": 34776.5412, "http_reqs_rate_avg": 1.361073679316474, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-021143"}, {"test_type": "scalability", "node": "CPP_OpenSSL", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 6506.047417374519, "http_req_duration_p95_avg": 17971.546865, "http_req_duration_p95_min": 17971.546865, "http_req_duration_p95_max": 17971.546865, "http_reqs_rate_avg": 2.3329093039484197, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-020034"}, {"test_type": "scalability", "node": "Python_Cryptography", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 12389.568287919461, "http_req_duration_p95_avg": 32878.912764999994, "http_req_duration_p95_min": 32878.912764999994, "http_req_duration_p95_max": 32878.912764999994, "http_reqs_rate_avg": 1.3395122480170072, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260501-025520"}, {"test_type": "scalability", "node": "Python_PyCryptodome", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 1, "http_req_duration_avg": 17481.427622842642, "http_req_duration_p95_avg": 67466.0306, "http_req_duration_p95_min": 67466.0306, "http_req_duration_p95_max": 67466.0306, "http_reqs_rate_avg": 0.823471170542888, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-014847"}, {"test_type": "scalability", "node": "CPP_CryptoPP", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 3256.5486933333327, "http_req_duration_p95_avg": 17086.758414999997, "http_req_duration_p95_min": 17086.758414999997, "http_req_duration_p95_max": 17086.758414999997, "http_reqs_rate_avg": 0.5218581059147174, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-021535"}, {"test_type": "scalability", "node": "CPP_OpenSSL", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 2978.316636936937, "http_req_duration_p95_avg": 15632.98215, "http_req_duration_p95_min": 15632.98215, "http_req_duration_p95_max": 15632.98215, "http_reqs_rate_avg": 0.49028975140194736, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-020417"}, {"test_type": "scalability", "node": "Python_Cryptography", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 2440.684128, "http_req_duration_p95_avg": 25735.40128, "http_req_duration_p95_min": 25735.40128, "http_req_duration_p95_max": 25735.40128, "http_reqs_rate_avg": 0.41367321267777757, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260501-025903"}, {"test_type": "scalability", "node": "Python_PyCryptodome", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 1, "http_req_duration_avg": 3720.5750849462365, "http_req_duration_p95_avg": 23301.84446, "http_req_duration_p95_min": 23301.84446, "http_req_duration_p95_max": 23301.84446, "http_reqs_rate_avg": 0.38001788424639227, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 0.0, "decrypt_duration_avg": 0.0, "latest_timestamp": "20260502-015247"}, {"test_type": "stability", "node": "CPP_CryptoPP", "payload_bytes": 1, "payload_label": "1B", "runs": 3, "http_req_duration_avg": 17.71227175643307, "http_req_duration_p95_avg": 50.19430666666666, "http_req_duration_p95_min": 49.70045999999999, "http_req_duration_p95_max": 50.811865, "http_reqs_rate_avg": 292.97804519577136, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 5.246744705105929, "decrypt_duration_avg": 30.178258433973213, "latest_timestamp": "20260501-023543"}, {"test_type": "stability", "node": "CPP_OpenSSL", "payload_bytes": 1, "payload_label": "1B", "runs": 3, "http_req_duration_avg": 15.380173658867424, "http_req_duration_p95_avg": 47.88831666666667, "http_req_duration_p95_min": 47.77023, "http_req_duration_p95_max": 48.08938, "http_reqs_rate_avg": 303.5028395943703, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2.7454075917929996, "decrypt_duration_avg": 28.015065689331472, "latest_timestamp": "20260502-030917"}, {"test_type": "stability", "node": "Python_Cryptography", "payload_bytes": 1, "payload_label": "1B", "runs": 3, "http_req_duration_avg": 259.9572752683478, "http_req_duration_p95_avg": 403.4233766666666, "http_req_duration_p95_min": 398.52708, "http_req_duration_p95_max": 410.90654999999987, "http_reqs_rate_avg": 64.39698126859443, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 307.1896103422921, "decrypt_duration_avg": 212.74276525153323, "latest_timestamp": "20260430-012333"}, {"test_type": "stability", "node": "Python_PyCryptodome", "payload_bytes": 1, "payload_label": "1B", "runs": 3, "http_req_duration_avg": 2135.433137599667, "http_req_duration_p95_avg": 5031.999973333333, "http_req_duration_p95_min": 4490.102, "http_req_duration_p95_max": 5307.6421, "http_reqs_rate_avg": 9.163771986297007, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2484.6677801966134, "decrypt_duration_avg": 1787.6415352035547, "latest_timestamp": "20260430-033735"}, {"test_type": "stability", "node": "CPP_CryptoPP", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 3, "http_req_duration_avg": 3837.7125884924512, "http_req_duration_p95_avg": 4354.890240000001, "http_req_duration_p95_min": 4317.3837, "http_req_duration_p95_max": 4386.112700000001, "http_reqs_rate_avg": 1.1836041423669947, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 3888.581902526941, "decrypt_duration_avg": 3808.1480783065326, "latest_timestamp": "20260501-024044"}, {"test_type": "stability", "node": "CPP_OpenSSL", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 3, "http_req_duration_avg": 3768.4923633738, "http_req_duration_p95_avg": 4563.415123333332, "http_req_duration_p95_min": 4141.4099, "http_req_duration_p95_max": 5063.910669999998, "http_reqs_rate_avg": 1.2020144044427956, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 3936.895420033871, "decrypt_duration_avg": 3620.61358469931, "latest_timestamp": "20260502-031417"}, {"test_type": "stability", "node": "Python_Cryptography", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 3, "http_req_duration_avg": 2173.3263878707603, "http_req_duration_p95_avg": 2707.2468799999997, "http_req_duration_p95_min": 2282.3562, "http_req_duration_p95_max": 3526.1228199999996, "http_reqs_rate_avg": 2.007584183609198, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2142.0643255193827, "decrypt_duration_avg": 2212.088463168263, "latest_timestamp": "20260430-012834"}, {"test_type": "stability", "node": "Python_PyCryptodome", "payload_bytes": 10485760, "payload_label": "10MB", "runs": 3, "http_req_duration_avg": 2535.6194349978864, "http_req_duration_p95_avg": 3462.063056666665, "http_req_duration_p95_min": 3223.163869999997, "http_req_duration_p95_max": 3600.495609999998, "http_reqs_rate_avg": 1.7414831776490136, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 2619.7886205086006, "decrypt_duration_avg": 2460.996419158261, "latest_timestamp": "20260430-034238"}, {"test_type": "stability", "node": "CPP_CryptoPP", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 3, "http_req_duration_avg": 11373.794834437544, "http_req_duration_p95_avg": 15497.14832333333, "http_req_duration_p95_min": 12672.23836, "http_req_duration_p95_max": 20080.298309999987, "http_reqs_rate_avg": 0.07080875965474066, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 11157.46204060606, "decrypt_duration_avg": 12659.100281212122, "latest_timestamp": "20260501-024549"}, {"test_type": "stability", "node": "CPP_OpenSSL", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 3, "http_req_duration_avg": 10678.276750956522, "http_req_duration_p95_avg": 11754.426603333333, "http_req_duration_p95_min": 11232.27252, "http_req_duration_p95_max": 12137.779649999999, "http_reqs_rate_avg": 0.0741902437959767, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 11179.96944090909, "decrypt_duration_avg": 11121.015481818182, "latest_timestamp": "20260502-031926"}, {"test_type": "stability", "node": "Python_Cryptography", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 3, "http_req_duration_avg": 13100.033162041467, "http_req_duration_p95_avg": 16753.314201666668, "http_req_duration_p95_min": 16315.170935, "http_req_duration_p95_max": 17176.94238, "http_reqs_rate_avg": 0.06278782117499555, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 15719.788637037036, "decrypt_duration_avg": 12628.316274074074, "latest_timestamp": "20260430-013339"}, {"test_type": "stability", "node": "Python_PyCryptodome", "payload_bytes": 104857600, "payload_label": "100MB", "runs": 3, "http_req_duration_avg": 13694.266681999115, "http_req_duration_p95_avg": 16106.094033333333, "http_req_duration_p95_min": 14990.7808, "http_req_duration_p95_max": 17460.546299999998, "http_reqs_rate_avg": 0.0612530129087759, "http_req_failed_rate_avg": 0.0, "http_req_failed_rate_max": 0.0, "decrypt_mismatch_rate_avg": 0.0, "iterations_avg": 0, "encrypt_duration_avg": 15285.908369722221, "decrypt_duration_avg": 13640.981775277778, "latest_timestamp": "20260430-034742"}];
+const overview = {"performance": {"best_latency": {"node": "CPP_OpenSSL", "value": 47.64, "unit": "ms (p95 avg)"}, "best_throughput": {"node": "CPP_OpenSSL", "value": 303.05, "unit": "req/s"}, "most_reliable": {"node": "CPP_CryptoPP", "value": 0.0, "unit": "fail %"}}, "stability": {"best_latency": {"node": "CPP_OpenSSL", "value": 47.89, "unit": "ms (p95 avg)"}, "best_throughput": {"node": "CPP_OpenSSL", "value": 303.5, "unit": "req/s"}, "most_reliable": {"node": "CPP_CryptoPP", "value": 0.0, "unit": "fail %"}}, "scalability": {"best_latency": {"node": "CPP_OpenSSL", "value": 48.07, "unit": "ms (p95 avg)"}, "best_throughput": {"node": "CPP_OpenSSL", "value": 241.61, "unit": "req/s"}, "most_reliable": {"node": "CPP_CryptoPP", "value": 0.0, "unit": "fail %"}}};
+const testTypeLabels = {"performance": "Wydajnosc", "stability": "Stabilnosc", "scalability": "Skalowalnosc"};
+const libraries = ["CPP_CryptoPP", "CPP_OpenSSL", "Python_Cryptography", "Python_PyCryptodome"];
+
+const palette = ['#c1482e', '#1c7c7d', '#2d5b8a', '#a57c1b'];
+let activeTestType = 'performance';
+let activeLibrary = null;
+
+const recordsBadge = document.getElementById('recordsBadge');
+recordsBadge.textContent = `Rekordy: ${rows.length}`;
+
+function uniqueSorted(values, sortNumeric = false) {
+  const uniq = [...new Set(values)];
+  return sortNumeric ? uniq.sort((a, b) => a - b) : uniq.sort();
+}
+
+function payloadLabel(payload) {
+  if (payload === 1) return '1B';
+  if (payload === 10485760) return '10MB';
+  if (payload === 104857600) return '100MB';
+  return `${payload}B`;
+}
+
+function rowsForActiveType() {
+  let filtered = rows.filter((row) => row.test_type === activeTestType);
+  if (activeLibrary && activeTestType === 'stability') {
+    filtered = filtered.filter((row) => row.node === activeLibrary);
+  }
+  return filtered;
+}
+
+function chartDataForMetric(metricName, transform = (value) => value) {
+  const source = rowsForActiveType();
+  
+  if (activeLibrary && activeTestType === 'stability') {
+    // Per-library stability: repeats on X-axis
+    const payloads = uniqueSorted(source.map((row) => row.payload_bytes), true);
+    const repeats = uniqueSorted(source.map((row) => row.repeat), true);
+    
+    const datasets = payloads.map((payload, idx) => {
+      const data = repeats.map((repeat) => {
+        const row = source.find((entry) => entry.payload_bytes === payload && entry.repeat === repeat);
+        return row ? Number(transform(row[metricName]).toFixed(4)) : null;
+      });
+      return {
+        label: payloadLabel(payload),
+        data,
+        backgroundColor: palette[idx % palette.length],
+        borderRadius: 6,
+      };
+    });
+    
+    return { labels: repeats.map((r) => `Repeat ${r}`), datasets };
+  } else {
+    // Cross-library: libraries on X-axis
+    const libList = uniqueSorted(source.map((row) => row.node));
+    const payloads = uniqueSorted(source.map((row) => row.payload_bytes), true);
+
+    const datasets = payloads.map((payload, idx) => {
+      const data = libList.map((node) => {
+        const row = source.find((entry) => entry.node === node && entry.payload_bytes === payload);
+        return row ? Number(transform(row[metricName]).toFixed(4)) : null;
+      });
+      return {
+        label: payloadLabel(payload),
+        data,
+        backgroundColor: palette[idx % palette.length],
+        borderRadius: 6,
+      };
+    });
+
+    return { labels: libList, datasets };
+  }
+}
+
+function fillOverviewCards() {
+  const block = overview[activeTestType] || {};
+  const latency = block.best_latency;
+  const throughput = block.best_throughput;
+  const reliable = block.most_reliable;
+
+  document.getElementById('bestLatency').textContent = latency
+    ? `${latency.node} (${latency.value} ${latency.unit})`
+    : '-';
+  document.getElementById('bestThroughput').textContent = throughput
+    ? `${throughput.node} (${throughput.value} ${throughput.unit})`
+    : '-';
+  document.getElementById('mostReliable').textContent = reliable
+    ? `${reliable.node} (${reliable.value} ${reliable.unit})`
+    : '-';
+}
+
+function renderTable() {
+  const source = rowsForActiveType();
+  const container = document.getElementById('tableContainer');
+
+  if (!source.length) {
+    container.innerHTML = '<p class="empty">Brak danych dla wybranego typu testu.</p>';
+    return;
+  }
+
+  const bodyRows = source
+    .sort((a, b) => (a.payload_bytes - b.payload_bytes) || a.node.localeCompare(b.node))
+    .map((row) => `
+      <tr>
+        <td>${row.node}</td>
+        <td><span class="pill">${payloadLabel(row.payload_bytes)}</span></td>
+        <td>${row.runs}</td>
+        <td>${row.http_req_duration_p95_avg.toFixed(2)}</td>
+        <td>${row.http_reqs_rate_avg.toFixed(2)}</td>
+        <td>${(row.http_req_failed_rate_avg * 100).toFixed(4)}</td>
+        <td>${(row.decrypt_mismatch_rate_avg * 100).toFixed(4)}</td>
+      </tr>
+    `)
+    .join('');
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Biblioteka</th>
+          <th>Payload</th>
+          <th>Liczba uruchomien</th>
+          <th>p95 [ms]</th>
+          <th>Throughput [req/s]</th>
+          <th>Fail [%]</th>
+          <th>Mismatch [%]</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  `;
+}
+
+function renderPerLibraryTable() {
+  if (activeTestType !== 'stability' || !activeLibrary) {
+    document.getElementById('perLibraryTableCard').classList.add('hidden');
+    return;
+  }
+  
+  document.getElementById('perLibraryTableCard').classList.remove('hidden');
+  const source = rowsForActiveType();
+  const container = document.getElementById('perLibraryTableContainer');
+
+  if (!source.length) {
+    container.innerHTML = '<p class="empty">Brak danych dla wybranej biblioteki.</p>';
+    return;
+  }
+
+  const bodyRows = source
+    .sort((a, b) => (a.payload_bytes - b.payload_bytes) || (a.repeat - b.repeat))
+    .map((row) => `
+      <tr>
+        <td>Repeat ${row.repeat}</td>
+        <td><span class="pill">${payloadLabel(row.payload_bytes)}</span></td>
+        <td>${row.iterations_avg.toFixed(0)}</td>
+        <td>${row.http_req_duration_p95_avg.toFixed(2)}</td>
+        <td>${row.http_reqs_rate_avg.toFixed(2)}</td>
+        <td>${(row.http_req_failed_rate_avg * 100).toFixed(4)}</td>
+        <td>${(row.decrypt_mismatch_rate_avg * 100).toFixed(4)}</td>
+      </tr>
+    `)
+    .join('');
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Run</th>
+          <th>Payload</th>
+          <th>Iteracje</th>
+          <th>p95 [ms]</th>
+          <th>Throughput [req/s]</th>
+          <th>Fail [%]</th>
+          <th>Mismatch [%]</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  `;
+}
+
+function buildToggle() {
+  const host = document.getElementById('testTypeToggle');
+  host.innerHTML = '';
+
+  Object.keys(testTypeLabels).forEach((type) => {
+    const button = document.createElement('button');
+    button.className = `toggle ${type === activeTestType ? 'active' : ''}`;
+    button.textContent = testTypeLabels[type];
+    button.onclick = () => {
+      activeTestType = type;
+      activeLibrary = null;
+      refresh();
+    };
+    host.appendChild(button);
+  });
+}
+
+function buildLibrarySelector() {
+  const host = document.getElementById('librarySelector');
+  host.innerHTML = '';
+  
+  if (activeTestType !== 'stability') {
+    host.innerHTML = '';
+    return;
+  }
+
+  const label = document.createElement('label');
+  label.textContent = 'Biblioteka:';
+  host.appendChild(label);
+  
+  const select = document.createElement('select');
+  select.id = 'librarySelect';
+  
+  const allOption = document.createElement('option');
+  allOption.value = '';
+  allOption.textContent = 'Wszystkie biblioteki';
+  select.appendChild(allOption);
+  
+  libraries.forEach((lib) => {
+    const option = document.createElement('option');
+    option.value = lib;
+    option.textContent = lib;
+    select.appendChild(option);
+  });
+  
+  select.value = activeLibrary || '';
+  select.onchange = (e) => {
+    activeLibrary = e.target.value || null;
+    refresh();
+  };
+  
+  host.appendChild(select);
+}
+
+let p95Chart;
+let throughputChart;
+let failChart;
+
+function renderCharts() {
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero: true } },
+  };
+
+  const p95Data = chartDataForMetric('http_req_duration_p95_avg');
+  const throughputData = chartDataForMetric('http_reqs_rate_avg');
+  const failData = chartDataForMetric('http_req_failed_rate_avg', (value) => value * 100.0);
+
+  if (p95Chart) p95Chart.destroy();
+  if (throughputChart) throughputChart.destroy();
+  if (failChart) failChart.destroy();
+
+  p95Chart = new Chart(document.getElementById('p95Chart'), {
+    type: 'bar',
+    data: p95Data,
+    options: commonOptions,
+  });
+
+  throughputChart = new Chart(document.getElementById('throughputChart'), {
+    type: 'bar',
+    data: throughputData,
+    options: commonOptions,
+  });
+
+  failChart = new Chart(document.getElementById('failChart'), {
+    type: 'bar',
+    data: failData,
+    options: commonOptions,
+  });
+}
+
+function refresh() {
+  buildToggle();
+  buildLibrarySelector();
+  fillOverviewCards();
+  renderCharts();
+  renderTable();
+  renderPerLibraryTable();
+}
+
+refresh();
+</script>
+</body>
+</html>

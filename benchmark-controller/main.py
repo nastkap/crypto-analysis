@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from benchmark import NODES, run_full_benchmark, results_to_csv
+from db import db_enabled, get_run, get_run_results, init_db, list_runs, save_run
 
 app = FastAPI(title="ECIES Benchmark Controller")
 
@@ -30,7 +31,17 @@ class BenchmarkResponse(BaseModel):
     iterations: int
     nodes_tested: list[str]
     total_measurements: int
+    run_id: Optional[str] = None
+    stored_in_db: bool = False
     results: list
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    try:
+        init_db()
+    except Exception as exc:
+        print(f"[benchmark-controller] DB init error: {exc}", flush=True)
 
 
 @app.get("/")
@@ -38,11 +49,15 @@ def read_root():
     return {
         "status": "ok",
         "service": "ECIES Benchmark Controller",
+        "database_enabled": db_enabled(),
         "available_nodes": NODES,
         "endpoints": {
             "POST /benchmark": "Uruchom benchmark (body: BenchmarkRequest)",
             "GET  /results":   "Ostatnie wyniki w formacie JSON",
             "GET  /results/csv": "Ostatnie wyniki do pobrania jako CSV",
+            "GET  /runs": "Historia benchmarkow z bazy",
+            "GET  /runs/{run_id}": "Szczegoly jednego uruchomienia",
+            "GET  /runs/{run_id}/results": "Wyniki pomiarow z jednego uruchomienia",
         },
     }
 
@@ -79,11 +94,27 @@ def run_benchmark(req: BenchmarkRequest):
         _last_csv = results_to_csv(results)
 
         nodes_tested = list(dict.fromkeys(r["Biblioteka"] for r in results))
+
+        run_id: Optional[str] = None
+        stored_in_db = False
+        try:
+            run_id = save_run(
+                iterations=req.iterations,
+                message=req.message,
+                nodes=nodes_tested,
+                results=results,
+            )
+            stored_in_db = run_id is not None
+        except Exception as db_exc:
+            print(f"[benchmark-controller] DB save error: {db_exc}", flush=True)
+
         return BenchmarkResponse(
             status="success",
             iterations=req.iterations,
             nodes_tested=nodes_tested,
             total_measurements=len(results),
+            run_id=run_id,
+            stored_in_db=stored_in_db,
             results=results,
         )
     except Exception as e:
@@ -108,3 +139,52 @@ def get_results_csv():
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=wyniki_benchmarku.csv"},
     )
+
+
+@app.get("/runs")
+def get_runs(
+    limit: int = Query(default=20, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+):
+    if not db_enabled():
+        raise HTTPException(status_code=503, detail="Baza danych nie jest skonfigurowana (brak DATABASE_URL).")
+
+    try:
+        items = list_runs(limit=limit, offset=offset)
+        return {"total": len(items), "runs": items}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Blad odczytu bazy: {exc}")
+
+
+@app.get("/runs/{run_id}")
+def get_run_details(run_id: str):
+    if not db_enabled():
+        raise HTTPException(status_code=503, detail="Baza danych nie jest skonfigurowana (brak DATABASE_URL).")
+
+    try:
+        item = get_run(run_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Nie znaleziono uruchomienia o podanym run_id.")
+        return item
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Blad odczytu bazy: {exc}")
+
+
+@app.get("/runs/{run_id}/results")
+def get_run_results_endpoint(run_id: str):
+    if not db_enabled():
+        raise HTTPException(status_code=503, detail="Baza danych nie jest skonfigurowana (brak DATABASE_URL).")
+
+    try:
+        item = get_run(run_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Nie znaleziono uruchomienia o podanym run_id.")
+
+        results = get_run_results(run_id)
+        return {"run": item, "total": len(results), "results": results}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Blad odczytu bazy: {exc}")

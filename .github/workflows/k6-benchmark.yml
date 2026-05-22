@@ -1,0 +1,83 @@
+name: k6-benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'perf/**'
+      - '.github/workflows/k6-benchmark.yml'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - Python_Cryptography
+          - Python_PyCryptodome
+          - CPP_OpenSSL
+          - CPP_CryptoPP
+        payload_bytes:
+          - 1
+          - 102400
+          - 104857600
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Resolve URL for matrix node
+        shell: bash
+        run: |
+          case "${{ matrix.node }}" in
+            "Python_Cryptography")
+              echo "TARGET_URL=${{ vars.PY_CRYPTO_URL }}" >> "$GITHUB_ENV"
+              ;;
+            "Python_PyCryptodome")
+              echo "TARGET_URL=${{ vars.PY_PYCRYPTODOME_URL }}" >> "$GITHUB_ENV"
+              ;;
+            "CPP_OpenSSL")
+              echo "TARGET_URL=${{ vars.CPP_OPENSSL_URL }}" >> "$GITHUB_ENV"
+              ;;
+            "CPP_CryptoPP")
+              echo "TARGET_URL=${{ vars.CPP_CRYPTOPP_URL }}" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unknown node" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Validate URL presence
+        shell: bash
+        run: |
+          if [ -z "$TARGET_URL" ]; then
+            echo "Missing repository variable for matrix node URL." >&2
+            echo "Set repository variables: PY_CRYPTO_URL, PY_PYCRYPTODOME_URL, CPP_OPENSSL_URL, CPP_CRYPTOPP_URL" >&2
+            exit 1
+          fi
+
+      - name: Run k6 benchmark
+        shell: bash
+        run: |
+          mkdir -p perf/results
+          k6 run \
+            -e TARGET_URL="$TARGET_URL" \
+            -e NODE_NAME="${{ matrix.node }}" \
+            -e PAYLOAD_BYTES="${{ matrix.payload_bytes }}" \
+            -e DURATION="1m" \
+            --summary-export="perf/results/${{ matrix.node }}-${{ matrix.payload_bytes }}-summary.json" \
+            --out "json=perf/results/${{ matrix.node }}-${{ matrix.payload_bytes }}-raw.json" \
+            perf/k6/benchmark.js
+
+      - name: Upload k6 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ matrix.node }}-${{ matrix.payload_bytes }}
+          path: perf/results/*
+          if-no-files-found: error

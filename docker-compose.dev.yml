@@ -20,6 +20,7 @@ services:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URL: "postgresql://${DB_USER:-benchmark}:${DB_PASSWORD:-benchmark}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-benchmark}"
       ENVIRONMENT: "${ENVIRONMENT:-development}"
     volumes:
       # Volume do logów
@@ -32,14 +33,15 @@ services:
       - crypto_network
     depends_on:
       - redis
+      - postgres
     restart: unless-stopped
     # Best Practice #5: Health Checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     # Best Practice #6: Resource Limits
     deploy:
       resources:
@@ -59,11 +61,14 @@ services:
   crypto:
     image: nastap/crypto:latest
     container_name: crypto-crypto-node
+    ports:
+      - "8001:8000"
     environment:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       CONTROLLER_HOST: controller
       CONTROLLER_PORT: 8000
       ENVIRONMENT: "${ENVIRONMENT:-development}"
+      BROKER_URL: "redis://:${REDIS_PASSWORD:-devpassword}@redis:6379"
     volumes:
       - crypto_logs:/app/logs
       - crypto_cache:/app/cache
@@ -75,11 +80,11 @@ services:
     restart: unless-stopped
     # Best Practice #5: Health Checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -98,11 +103,14 @@ services:
   pycryptodome:
     image: nastap/pycryptodome:latest
     container_name: crypto-pycryptodome-node
+    ports:
+      - "8002:8000"
     environment:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       CONTROLLER_HOST: controller
       CONTROLLER_PORT: 8000
       ENVIRONMENT: "${ENVIRONMENT:-development}"
+      BROKER_URL: "redis://:${REDIS_PASSWORD:-devpassword}@redis:6379"
     volumes:
       - pycryptodome_logs:/app/logs
       - pycryptodome_cache:/app/cache
@@ -114,11 +122,11 @@ services:
     restart: unless-stopped
     # Best Practice #5: Health Checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -137,15 +145,21 @@ services:
   openssl:
     image: nastap/openssl:latest
     container_name: crypto-openssl-node
+    build:
+      context: ./node-cpp-openssl
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
     environment:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       CONTROLLER_HOST: controller
       CONTROLLER_PORT: 8000
       ENVIRONMENT: "${ENVIRONMENT:-development}"
+      BROKER_URL: "redis://:${REDIS_PASSWORD:-devpassword}@redis:6379"
     volumes:
-      - openssl_logs:/app/logs
       - openssl_cache:/app/cache
       - openssl_data:/app/data
+      - openssl_logs:/app/logs
     networks:
       - crypto_network
     depends_on:
@@ -153,19 +167,19 @@ services:
     restart: unless-stopped
     # Best Practice #5: Health Checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     deploy:
       resources:
         limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
           cpus: '0.5'
           memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
     labels:
       com.crypto-analysis.app: "openssl"
       com.crypto-analysis.type: "cpp-openssl"
@@ -176,11 +190,17 @@ services:
   cryptopp:
     image: nastap/cryptopp:latest
     container_name: crypto-cryptopp-node
+    build:
+      context: ./node-cpp-cryptopp
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
     environment:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       CONTROLLER_HOST: controller
       CONTROLLER_PORT: 8000
       ENVIRONMENT: "${ENVIRONMENT:-development}"
+      BROKER_URL: "redis://:${REDIS_PASSWORD:-devpassword}@redis:6379"
     volumes:
       - cryptopp_logs:/app/logs
       - cryptopp_data:/app/data
@@ -191,19 +211,19 @@ services:
     restart: unless-stopped
     # Best Practice #5: Health Checks
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     deploy:
       resources:
         limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
           cpus: '0.5'
           memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
     labels:
       com.crypto-analysis.app: "cryptopp"
       com.crypto-analysis.type: "cpp-cryptopp"
@@ -241,6 +261,89 @@ services:
     labels:
       com.crypto-analysis.app: "redis"
       com.crypto-analysis.type: "cache"
+
+  # ========================================================================
+  # 7. POSTGRES - Trwała baza wyników benchmarków
+  # ========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: crypto-postgres
+    environment:
+      POSTGRES_DB: "${DB_NAME:-benchmark}"
+      POSTGRES_USER: "${DB_USER:-benchmark}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-benchmark}"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - crypto_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-benchmark} -d ${DB_NAME:-benchmark}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    labels:
+      com.crypto-analysis.app: "postgres"
+      com.crypto-analysis.type: "database"
+
+  # ========================================================================
+  # 8. FRONTEND - React UI Application
+  # ========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: crypto-frontend-dev
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      # Zmienne środowiskowe z .env
+      VITE_API_URL: "http://controller:8000/api"
+      VITE_ENV: "${ENVIRONMENT:-development}"
+      NODE_ENV: "${ENVIRONMENT:-development}"
+    volumes:
+      # Hot reload dla development
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      # Frontend logs i cache
+      - frontend_logs:/app/logs
+      - frontend_cache:/app/.vite
+    networks:
+      - crypto_network
+    depends_on:
+      controller:
+        condition: service_healthy
+    restart: unless-stopped
+    # Best Practice #5: Health Checks
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Best Practice #6: Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    labels:
+      com.crypto-analysis.app: "frontend"
+      com.crypto-analysis.version: "${APP_VERSION:-1.0.0}"
+      com.crypto-analysis.type: "react-ui"
 
 # ============================================================================
 # VOLUMES - Best Practice #3: Named Volumes (15 total)
@@ -283,12 +386,26 @@ volumes:
   # Cryptopp Node (2)
   cryptopp_logs:
     driver: local
+  cryptopp_cache:
+    driver: local
   cryptopp_data:
     driver: local
   
   # Redis Persistence (1)
   redis_data:
     driver: local
+
+  # Postgres Persistence (1)
+  postgres_data:
+    driver: local
+
+  # Frontend (2)
+  frontend_logs:
+    driver: local
+  frontend_cache:
+    driver: local
+
+
 
 # ============================================================================
 # NETWORKS - Best Practice #4: Custom Networks

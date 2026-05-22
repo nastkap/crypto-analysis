@@ -1,0 +1,252 @@
+name: ECIES Benchmark - Automated Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'benchmark-controller/**'
+      - 'node-*/**'
+      - 'perf/k6/**'
+      - 'k8s/**'
+      - '.github/workflows/benchmark.yml'
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Codziennie o 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        k8s-version: ['1.28']
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          minikube-version: 1.33.0
+          k8s-version: v${{ matrix.k8s-version }}.0
+          cpus: 4
+          memory: 8192
+          addons: ingress,metrics-server
+          cni: calico
+
+      - name: Verify Kubernetes cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl version
+
+      - name: Build Docker images
+        run: |
+          eval $(minikube docker-env)
+          
+          echo "Building PostgreSQL image..."
+          docker pull postgres:16-alpine
+          
+          echo "Building Redis image..."
+          docker pull redis:7-alpine
+          
+          echo "Building benchmark-controller..."
+          docker build -t nastap/controller:latest benchmark-controller/
+          
+          echo "Building Python nodes..."
+          docker build -t nastap/crypto:latest node-py-crypto/
+          docker build -t nastap/pycryptodome:latest node-py-pycryptodome/
+          
+          echo "Building C++ nodes..."
+          docker build -t nastap/openssl:latest node-cpp-openssl/
+          docker build -t nastap/cryptopp:latest node-cpp-cryptopp/
+          
+          echo "Docker images built successfully!"
+
+      - name: Deploy Kubernetes system
+        run: |
+          echo "Creating namespace..."
+          kubectl create namespace crypto-perf || true
+          
+          echo "Deploying with Kustomize..."
+          kubectl apply -k k8s/
+          
+          echo "Waiting for deployments..."
+          kubectl wait --for=condition=available --timeout=300s \
+            deployment/benchmark-controller -n crypto-perf || true
+          
+          echo "Waiting for all pods to be running..."
+          kubectl wait --for=condition=ready pod \
+            --all -n crypto-perf --timeout=300s || true
+          
+          echo "Pod status:"
+          kubectl get pods -n crypto-perf
+
+      - name: Verify system
+        run: |
+          echo "Checking Deployments..."
+          kubectl get deployments -n crypto-perf
+          
+          echo "Checking Services..."
+          kubectl get services -n crypto-perf
+          
+          echo "Checking Network Policies..."
+          kubectl get networkpolicies -n crypto-perf
+          
+          echo "Checking Resource Usage..."
+          kubectl top pods -n crypto-perf || true
+          
+          echo "Checking Pod descriptions..."
+          kubectl describe pods -n crypto-perf || true
+
+      - name: Test PostgreSQL connectivity
+        run: |
+          echo "Starting PostgreSQL test..."
+          
+          kubectl run -it --rm pg-test \
+            --image=postgres:16-alpine \
+            --restart=Never \
+            -n crypto-perf \
+            -- sh -c "
+            apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
+            psql -h postgres -U benchmark -d benchmark -c 'SELECT 1'
+            " || echo "PostgreSQL test completed"
+
+      - name: Set up K6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg
+          
+          curl https://dl.k6.io/key.gpg | sudo apt-key add -
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6-stable.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+          
+          k6 version
+
+      - name: Start port-forward
+        run: |
+          echo "Starting port-forward in background..."
+          kubectl port-forward svc/benchmark-controller 8000:8000 -n crypto-perf &
+          
+          echo "Waiting for API to be ready..."
+          sleep 5
+          
+          # Check API health
+          attempt=0
+          while [ $attempt -lt 30 ]; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/benchmark -X POST 2>/dev/null || echo "000")
+            if [ "$status" = "200" ] || [ "$status" = "201" ]; then
+              echo "API is ready!"
+              break
+            fi
+            echo "Waiting... ($attempt/30) - Status: $status"
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+
+      - name: Run K6 performance tests
+        run: |
+          echo "Running K6 benchmark tests..."
+          
+          k6 run perf/k6/benchmark.js \
+            --vus=10 \
+            --duration=2m \
+            --out=json=k6-results.json || true
+          
+          echo "K6 tests completed!"
+
+      - name: Collect results
+        if: always()
+        run: |
+          echo "Collecting benchmark results..."
+          
+          # PostgreSQL results
+          kubectl exec -n crypto-perf \
+            pod/$(kubectl get pods -n crypto-perf -l app=postgres -o jsonpath='{.items[0].metadata.name}') \
+            -- psql -U benchmark -d benchmark -c "SELECT algorithm, COUNT(*), AVG(time_ms) FROM benchmark_results GROUP BY algorithm" || true
+          
+          # Create results directory
+          mkdir -p benchmark-results
+          
+          # Copy K6 results
+          cp k6-results.json benchmark-results/ || true
+          
+          # Export PostgreSQL data
+          kubectl port-forward svc/postgres 5432:5432 -n crypto-perf &
+          sleep 3
+          
+          PGPASSWORD=benchmark psql -h localhost -U benchmark -d benchmark \
+            -c "\COPY (SELECT * FROM benchmark_results) TO 'benchmark-results/db-export.csv' WITH (FORMAT CSV, HEADER)" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results/
+          retention-days: 30
+
+      - name: Generate report
+        if: always()
+        run: |
+          echo "Setting up Python..."
+          python -m pip install --upgrade pip
+          pip install psycopg2-binary plotly kaleido pandas
+          
+          echo "Generating performance report..."
+          python perf/dashboard/build_performance_report.py || true
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: perf/dashboard/performance-report.html
+          retention-days: 30
+
+      - name: Create GitHub Pages artifact
+        if: always()
+        run: |
+          mkdir -p github-pages
+          cp perf/dashboard/performance-report.html github-pages/index.html || echo "Report not generated"
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./github-pages
+          cname: benchmark.example.com
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Benchmark tests completed!**\n\n📊 Results:\n- Download artifacts from Actions tab\n- View report: Check the uploaded `performance-report.html`\n- K6 results: `k6-results.json`\n- Database export: `db-export.csv`'
+            })
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up resources..."
+          kubectl delete namespace crypto-perf || true
+          minikube stop || true
+
+      - name: Failure notification
+        if: failure()
+        run: |
+          echo "❌ Benchmark failed!"
+          echo "Check logs above for details"
+          exit 1

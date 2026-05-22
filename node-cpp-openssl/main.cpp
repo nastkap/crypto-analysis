@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -55,34 +56,74 @@ static EVP_PKEY* pem_to_pubkey(const std::string& pem) {
 }
 
 // ---- Redis URL parser ----
-static void parse_redis_url(const std::string& url, std::string& host, int& port) {
-    host = "message-broker";
+static void parse_redis_url(const std::string& url, std::string& host, int& port, std::string& password) {
+    host = "redis";
     port = 6379;
+    password.clear();
     auto pos = url.find("://");
     if (pos == std::string::npos) return;
-    std::string hostport = url.substr(pos + 3);
+    std::string rest = url.substr(pos + 3);
+    auto at = rest.rfind('@');
+    std::string hostport = rest;
+    if (at != std::string::npos) {
+        std::string auth = rest.substr(0, at);
+        hostport = rest.substr(at + 1);
+        if (!auth.empty() && auth[0] == ':') {
+            password = auth.substr(1);
+        } else {
+            password = auth;
+        }
+    }
     auto colon = hostport.rfind(':');
     if (colon != std::string::npos) {
         host = hostport.substr(0, colon);
         port = std::stoi(hostport.substr(colon + 1));
+    } else if (!hostport.empty()) {
+        host = hostport;
     }
+}
+
+static redisContext* connect_redis(const std::string& host, int port, const std::string& password) {
+    redisContext* r = redisConnect(host.c_str(), port);
+    if (!r || r->err) return r;
+    if (!password.empty()) {
+        redisReply* auth = (redisReply*)redisCommand(r, "AUTH %s", password.c_str());
+        if (!auth || auth->type == REDIS_REPLY_ERROR) {
+            if (auth) freeReplyObject(auth);
+            redisFree(r);
+            return nullptr;
+        }
+        freeReplyObject(auth);
+    }
+    return r;
 }
 
 // ---- Redis worker thread ----
 static void redis_worker(const std::string& node_name,
                          const std::string& redis_host, int redis_port,
+                         const std::string& redis_password,
                          ECIES_OpenSSL ecies, EVP_PKEY* node_priv) {
-    redisContext* r = redisConnect(redis_host.c_str(), redis_port);
-    if (!r || r->err) {
-        std::cerr << "[" << node_name << "] Redis worker: blad polaczenia" << std::endl;
-        return;
+    redisContext* r = nullptr;
+    while (!r || r->err) {
+        r = connect_redis(redis_host, redis_port, redis_password);
+        if (!r || r->err) {
+            std::cerr << "[" << node_name << "] Redis worker: blad polaczenia, probuje ponownie za 2 sekundy..." << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+        }
     }
     std::string queue_key = "tasks:" + node_name;
     std::cout << "[" << node_name << "] Worker Redis uruchomiony, nasluchuje: " << queue_key << std::endl;
 
     while (true) {
         redisReply* reply = (redisReply*)redisCommand(r, "BRPOP %s 5", queue_key.c_str());
-        if (!reply) { redisFree(r); r = redisConnect(redis_host.c_str(), redis_port); continue; }
+        if (!reply) {
+            redisFree(r);
+            r = connect_redis(redis_host, redis_port, redis_password);
+            if (!r || r->err) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            continue;
+        }
         if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) { freeReplyObject(reply); continue; }
 
         std::string task_json = reply->element[1]->str;
@@ -151,17 +192,42 @@ int main() {
     // --- Env vars ---
     const char* name_env   = std::getenv("NODE_NAME");
     const char* broker_env = std::getenv("BROKER_URL");
+    const char* redis_host_env = std::getenv("REDIS_HOST");
+    const char* redis_port_env = std::getenv("REDIS_PORT");
+    const char* redis_pass_env = std::getenv("REDIS_PASSWORD");
     std::string node_name  = name_env   ? name_env   : "CPP_OpenSSL";
     std::string broker_url = broker_env ? broker_env : "redis://message-broker:6379";
-    std::string redis_host; int redis_port;
-    parse_redis_url(broker_url, redis_host, redis_port);
+    std::string redis_host;
+    std::string redis_password;
+    int redis_port;
+    if (redis_host_env || redis_port_env || redis_pass_env) {
+        redis_host = redis_host_env ? redis_host_env : "redis";
+        redis_port = redis_port_env ? std::stoi(redis_port_env) : 6379;
+        redis_password = redis_pass_env ? redis_pass_env : "";
+    } else {
+        parse_redis_url(broker_url, redis_host, redis_port, redis_password);
+    }
 
     ECIES_OpenSSL ecies;
     EVP_PKEY* node_priv = ecies.GenerateKey();
 
-    // --- Rejestracja klucza publicznego w Redis ---
+    // --- Rejestracja klucza publicznego w Redis (z mechanizmem ponawiania) ---
     {
-        redisContext* r = redisConnect(redis_host.c_str(), redis_port);
+        redisContext* r = nullptr;
+        int max_retries = 10;
+        int current_retry = 0;
+
+        while (current_retry < max_retries) {
+            r = connect_redis(redis_host, redis_port, redis_password);
+            if (r && !r->err) {
+                break; // Udało się połączyć!
+            }
+            std::cerr << "[" << node_name << "] Oczekiwanie na siec/Redis (proba " 
+                      << (current_retry + 1) << "/" << max_retries << ")..." << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            current_retry++;
+        }
+
         if (r && !r->err) {
             std::string pem = pubkey_to_pem(node_priv);
             redisReply* rep = (redisReply*)redisCommand(r, "SET pubkey:%s %s",
@@ -170,14 +236,16 @@ int main() {
             redisFree(r);
             std::cout << "[" << node_name << "] Klucz publiczny zarejestrowany w Redis" << std::endl;
         } else {
-            std::cerr << "[" << node_name << "] Blad polaczenia z Redis" << std::endl;
+            std::cerr << "[" << node_name << "] Krytyczny blad: Nie udalo sie polaczyc z Redis po " 
+                      << max_retries << " probach!" << std::endl;
         }
     }
 
     // --- Worker thread (Redis queue) ---
-    std::thread(redis_worker, node_name, redis_host, redis_port, ecies, node_priv).detach();
+    std::thread(redis_worker, node_name, redis_host, redis_port, redis_password, ecies, node_priv).detach();
 
     httplib::Server svr;
+    std::mutex ecies_mutex;
 
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         json resp = {{"status", "ok"}, {"node", "C++-OpenSSL"}, {"message", "Mikroserwis dziala!"}};
@@ -202,10 +270,14 @@ int main() {
             std::string pub_pem  = body.at("receiver_public_key_pem");
 
             auto t0 = std::chrono::high_resolution_clock::now();
-            EVP_PKEY* recv_pub = pem_to_pubkey(pub_pem);
-            if (!recv_pub) throw std::runtime_error("Nieprawidlowy klucz PEM");
-            PackageOSSL pkg = ecies.Encrypt(recv_pub, message);
-            EVP_PKEY_free(recv_pub);
+            PackageOSSL pkg;
+            {
+                std::lock_guard<std::mutex> lock(ecies_mutex);
+                EVP_PKEY* recv_pub = pem_to_pubkey(pub_pem);
+                if (!recv_pub) throw std::runtime_error("Nieprawidlowy klucz PEM");
+                pkg = ecies.Encrypt(recv_pub, message);
+                EVP_PKEY_free(recv_pub);
+            }
             double ms = std::chrono::duration<double, std::milli>(
                 std::chrono::high_resolution_clock::now() - t0).count();
 
@@ -246,7 +318,11 @@ int main() {
             pkg.ciphertext.assign(ct_tag.begin(), ct_tag.end() - 16);
 
             auto t0 = std::chrono::high_resolution_clock::now();
-            std::string decrypted = ecies.Decrypt(node_priv, pkg);
+            std::string decrypted;
+            {
+                std::lock_guard<std::mutex> lock(ecies_mutex);
+                decrypted = ecies.Decrypt(node_priv, pkg);
+            }
             double ms = std::chrono::duration<double, std::milli>(
                 std::chrono::high_resolution_clock::now() - t0).count();
 
@@ -261,6 +337,9 @@ int main() {
             res.set_content(json{{"detail", e.what()}}.dump(), "application/json");
         }
     });
+
+    // Zwi\u0119kszenie thread pool dla obs\u0142ugi concurrent request\u00f3w
+    svr.new_task_queue = [](){ return new httplib::ThreadPool(128, 0); };
 
     std::cout << "[" << node_name << "] C++ OpenSSL ECIES serwer uruchomiony na porcie 8000" << std::endl;
     svr.listen("0.0.0.0", 8000);

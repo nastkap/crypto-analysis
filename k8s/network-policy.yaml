@@ -1,0 +1,151 @@
+---
+# Network Policy - Kontrola ruchu sieciowego w namespace crypto-perf
+# Implementacja: Deny-all by default, explicit allow dla wymaganych komunikacji
+
+# Default Deny All Ingress (secure by default)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crypto-deny-all-ingress
+  namespace: crypto-perf
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# PostgreSQL - Accept traffic from Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-from-apps
+  namespace: crypto-perf
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: benchmark-controller
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+# Redis - Accept traffic from Controller and all Crypto Nodes
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-allow-from-apps
+  namespace: crypto-perf
+spec:
+  podSelector:
+    matchLabels:
+      app: message-broker
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: benchmark-controller
+    - podSelector:
+        matchExpressions:
+        - key: app
+          operator: In
+          values:
+          - node-py-crypto
+          - node-py-pycryptodome
+          - node-cpp-openssl
+          - node-cpp-cryptopp
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# Controller - Accept traffic from Crypto Nodes
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller-allow-ingress
+  namespace: crypto-perf
+spec:
+  podSelector:
+    matchLabels:
+      app: benchmark-controller
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8000
+
+---
+# Crypto Nodes - Accept traffic from Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crypto-nodes-allow-ingress
+  namespace: crypto-perf
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - node-py-crypto
+      - node-py-pycryptodome
+      - node-cpp-openssl
+      - node-cpp-cryptopp
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: benchmark-controller
+    ports:
+    - protocol: TCP
+      port: 8000
+
+---
+# Frontend - Accept traffic from external and allow egress to Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-allow-external
+  namespace: crypto-perf
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 3000
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: benchmark-controller
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
