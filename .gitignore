@@ -11,4 +11,3 @@ venv/
 # Python cache
 __pycache__/
 *.pyc
-perf/results/
