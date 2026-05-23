@@ -11,26 +11,26 @@ metadata:
 spec:
   hard:
     # CPU limits
-    requests.cpu: "4"              # Total CPU requested w namespace
-    limits.cpu: "12"                # Total CPU limit w namespace
+    requests.cpu: "4"             
+    limits.cpu: "12"                
     
     # Memory limits
-    requests.memory: "8Gi"       # Total RAM requested
-    limits.memory: "20Gi"          # Total RAM limit
+    requests.memory: "8Gi"       
+    limits.memory: "20Gi"          
     
     # Pod count
-    pods: "20"                     # Maximum number of pods
+    pods: "20"                     
     
     # Services
-    services: "10"                 # Maximum services
-    services.loadbalancers: "2"    # Max LoadBalancer services
+    services: "10"                 
+    services.loadbalancers: "2"    
     
     # Persistent Volumes
-    persistentvolumeclaims: "5"    # Max PVCs
+    persistentvolumeclaims: "5"    
 
 ---
 # Limits Range - Default resource requests/limits dla podów bez specyfiki
-# (safety net - each pod musi mieć limits jeśli nie zadeklaruje)
+
 apiVersion: v1
 kind: LimitRange
 metadata:
@@ -40,16 +40,16 @@ spec:
   limits:
   # Container limits
   - type: Container
-    default:        # Applied if pod doesn't specify
+    default:        
       cpu: 500m
       memory: 512Mi
     defaultRequest:
       cpu: 100m
       memory: 128Mi
-    min:            # Minimum allowed
+    min:            
       cpu: 10m
       memory: 32Mi
-    max:            # Maximum allowed
+    max:            
       cpu: 4000m
       memory: 8Gi
   

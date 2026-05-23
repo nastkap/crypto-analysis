@@ -2,7 +2,6 @@
 # Plik do testowania pierwszej wersji aplikacji crypto-analysis
 # Potwierdzenie poprawności funkcjonalnej systemu
 
-
 version: '3.9'
 
 services:
@@ -350,7 +349,7 @@ services:
       com.crypto-analysis.type: "react-ui"
 
 # ============================================================================
-# VOLUMES - Best Practice #3: Named Volumes (15 total)
+# VOLUMES 
 # 
 # Zarządzane przez Docker, łatwe do backup'u, migracli i czyszczenia
 # ============================================================================
@@ -412,7 +411,7 @@ volumes:
 
 
 # ============================================================================
-# NETWORKS - Best Practice #4: Custom Networks
+# NETWORKS 
 # 
 # Zapewnia izolację i komunikację między kontenerami przez nazwy
 # ============================================================================

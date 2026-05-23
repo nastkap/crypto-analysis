@@ -1,6 +1,6 @@
 ---
 # Ingress - Pozwala na dostęp do aplikacji z zewnątrz klastra
-# UWAGA: Wymaga zainstalowanego Ingress Controller (np. nginx-ingress w Minikube)
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

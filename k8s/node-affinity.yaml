@@ -1,6 +1,6 @@
 ---
-# Node Affinity Example - dla C++ węzłów (compute-heavy)
-# Preferes nodes labeled with node-type=compute
+# Node Affinity  - dla C++ węzłów (compute-heavy)
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -27,7 +27,7 @@ resources:
   - ingress.yaml
   - network-policy.yaml
   
-  # Scheduling & Affinity (optional - examples)
+  # Scheduling & Affinity (opcjonalnie)
   # - node-affinity.yaml
 
 # Etykiety dodawane do wszystkich zasobów
@@ -38,5 +38,5 @@ commonLabels:
 
 # Adnotacje dodawane do wszystkich zasobów
 commonAnnotations:
-  description: "ECIES Crypto Performance Benchmark System"
-  documentation: "See KUBERNETES_ARCHITECTURE.md"
+  description: "Crypto Performance Benchmark System"
+  documentation: "See ARCHITECTURE.md"

@@ -154,7 +154,7 @@ if (-not $SkipK6) {
     
     # Uruchomienie K6 testów
     Write-Step "Uruchamianie K6 performance testów..."
-    Write-Info "Będzie to trwać ~7 minut..."
+    Write-Info "Będzie to trwać ~2 godziny..."
     
     $perf_dir = Join-Path $current_dir "perf"
     $k6_script = Join-Path $perf_dir "k6\benchmark.js"
@@ -209,28 +209,4 @@ if (-not $SkipReports) {
     }
 }
 
-# Podsumowanie
-Write-Step "Benchmark zakończony!"
 
-Write-Info ""
-Write-Info "╔════════════════════════════════════════╗"
-Write-Info "║     ECIES Benchmark - PODSUMOWANIE    ║"
-Write-Info "╠════════════════════════════════════════╣"
-Write-Info "║ ✓ Minikube: Running"
-Write-Info "║ ✓ K8s: 7 podów"
-Write-Info "║ ✓ K6 testy: Zakończone"
-Write-Info "║ ✓ Raporty: Wygenerowane"
-Write-Info "╠════════════════════════════════════════╣"
-Write-Info "║ Przydatne komendy:"
-Write-Info "║"
-Write-Info "║ kubectl get pods -n crypto-perf"
-Write-Info "║ kubectl top pods -n crypto-perf"
-Write-Info "║ kubectl port-forward svc/benchmark-controller 8000:8000 -n crypto-perf"
-Write-Info "║"
-Write-Info "║ Czyszczenie:"
-Write-Info "║ kubectl delete namespace crypto-perf"
-Write-Info "║ minikube stop"
-Write-Info "╚════════════════════════════════════════╝"
-Write-Info ""
-
-Write-Success "Gotowe! 🎉"

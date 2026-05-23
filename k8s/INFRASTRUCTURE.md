@@ -180,6 +180,7 @@ Zdefiniowano precyzyjne ścieżki komunikacji (*Least Privilege*):
 * `controller-allow-ingress`: Pozwala na ruch przychodzący do centralnego kontrolera (port 8000) z innych podów w klastrze (niezbędne do odbierania żądań z frontendu oraz komunikacji zwrotnej).
 * `crypto-nodes-allow-ingress`: Zezwala na ruch przychodzący na port 8000 węzłów szyfrujących (Python/C++) wyłącznie z podów kontrolera, co zabezpiecza endpointy testowe przed nieautoryzowanym odpytywaniem.
 
-**Uzasadnienie:** 
+  **Uzasadnienie:** 
 Takie podejście drastycznie ogranicza wektor ataku (blast radius). Nawet jeśli atakujący skompromituje kontener Frontendu, Network Policy na poziomie wirtualnej sieci K8s zablokuje mu możliwość skanowania portów lub ataku bezpośrednio na bazę danych PostgreSQL czy węzły szyfrujące.
+---
 ---
