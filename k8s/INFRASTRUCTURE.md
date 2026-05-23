@@ -183,4 +183,4 @@ Zdefiniowano precyzyjne ścieżki komunikacji (*Least Privilege*):
   **Uzasadnienie:** 
 Takie podejście drastycznie ogranicza wektor ataku (blast radius). Nawet jeśli atakujący skompromituje kontener Frontendu, Network Policy na poziomie wirtualnej sieci K8s zablokuje mu możliwość skanowania portów lub ataku bezpośrednio na bazę danych PostgreSQL czy węzły szyfrujące.
 ---
----
+
