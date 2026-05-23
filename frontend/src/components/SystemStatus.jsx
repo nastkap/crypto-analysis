@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-import { getK8sPods } from '../api/client';
-import { Activity, Database, Server, AlertCircle } from 'lucide-react';
+import { getSystemStatus } from '../api/client';
+import { Activity, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 const StatusBadge = ({ status }) => {
   const statusConfig = {
-    Running: { color: 'bg-green-100', textColor: 'text-green-800', icon: Activity },
-    Pending: { color: 'bg-yellow-100', textColor: 'text-yellow-800', icon: AlertCircle },
-    Failed: { color: 'bg-red-100', textColor: 'text-red-800', icon: AlertCircle },
-    CrashLoopBackOff: { color: 'bg-red-100', textColor: 'text-red-800', icon: AlertCircle },
+    healthy: { color: 'bg-green-100', textColor: 'text-green-800', icon: CheckCircle2 },
+    error: { color: 'bg-red-100', textColor: 'text-red-800', icon: XCircle },
+    unknown: { color: 'bg-yellow-100', textColor: 'text-yellow-800', icon: AlertCircle },
   };
 
-  const config = statusConfig[status] || statusConfig.Pending;
+  const config = statusConfig[status] || statusConfig.unknown;
   const Icon = config.icon;
 
   return (
@@ -22,15 +21,15 @@ const StatusBadge = ({ status }) => {
 };
 
 export const SystemStatus = () => {
-  const [pods, setPods] = useState([]);
+  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchPods = async () => {
+    const fetchStatus = async () => {
       try {
-        const data = await getK8sPods();
-        setPods(data);
+        const data = await getSystemStatus();
+        setStatus(data);
         setError(null);
       } catch (err) {
         setError('Failed to fetch system status');
@@ -40,8 +39,8 @@ export const SystemStatus = () => {
       }
     };
 
-    fetchPods();
-    const interval = setInterval(fetchPods, 10000); // Refresh every 10 seconds
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -50,11 +49,8 @@ export const SystemStatus = () => {
     return <div className="text-center py-8">Loading system status...</div>;
   }
 
-  const getIconForPod = (name) => {
-    if (name.includes('postgres')) return Database;
-    if (name.includes('redis')) return Server;
-    return Activity;
-  };
+  const serviceStatus = status?.status === 'healthy' ? 'healthy' : 'error';
+  const serviceName = status?.service || 'Benchmark Controller';
 
   return (
     <div className="card">
@@ -66,41 +62,17 @@ export const SystemStatus = () => {
         </div>
       )}
 
-      <div className="space-y-3">
-        {pods.map((pod) => {
-          const Icon = getIconForPod(pod.name);
-          return (
-            <div key={pod.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all">
-              <div className="flex items-center gap-3">
-                <Icon size={20} className="text-primary" />
-                <div>
-                  <div className="font-semibold text-gray-900">{pod.name}</div>
-                  <div className="text-sm text-gray-500">
-                    CPU: {pod.cpu} | Memory: {pod.memory}
-                  </div>
-                </div>
-              </div>
-              <StatusBadge status={pod.status} />
+      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3">
+          <Activity size={20} className="text-primary" />
+          <div>
+            <div className="font-semibold text-gray-900">{serviceName}</div>
+            <div className="text-sm text-gray-500">
+              {status?.service ? `Health endpoint responded successfully` : 'Waiting for backend response'}
             </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-primary">{pods.filter(p => p.status === 'Running').length}</div>
-            <div className="text-sm text-gray-600">Running</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-yellow-600">{pods.filter(p => p.status === 'Pending').length}</div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">{pods.filter(p => p.status === 'Failed').length}</div>
-            <div className="text-sm text-gray-600">Failed</div>
           </div>
         </div>
+        <StatusBadge status={serviceStatus} />
       </div>
     </div>
   );

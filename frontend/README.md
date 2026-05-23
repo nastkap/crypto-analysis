@@ -106,7 +106,7 @@ frontend/
 Create `.env.local` in the project root:
 
 ```env
-VITE_API_URL=http://localhost:8000/api
+VITE_API_URL=http://localhost:8000
 ```
 
 For production, update `vite.config.js` proxy configuration or set the correct API URL.
@@ -208,7 +208,7 @@ The production build creates a `dist/` folder with:
 ## Troubleshooting
 
 ### API calls failing
-- Check if backend is running: `curl http://localhost:8000/api/health`
+- Check if backend is running: `curl http://localhost:8000/health`
 - Update `VITE_API_URL` in `.env.local`
 - Check browser console for CORS errors
 

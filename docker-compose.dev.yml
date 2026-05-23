@@ -11,6 +11,9 @@ services:
   # 1. BENCHMARK CONTROLLER - Główny Serwis Kontroli
   # ========================================================================
   controller:
+    build:
+      context: ./benchmark-controller
+      dockerfile: Dockerfile
     image: nastap/controller:latest
     container_name: crypto-controller
     ports:
@@ -20,6 +23,7 @@ services:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      BROKER_URL: "redis://:${REDIS_PASSWORD:-devpassword}@redis:6379"
       DATABASE_URL: "postgresql://${DB_USER:-benchmark}:${DB_PASSWORD:-benchmark}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-benchmark}"
       ENVIRONMENT: "${ENVIRONMENT:-development}"
     volumes:
@@ -308,7 +312,7 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
       # Zmienne środowiskowe z .env
-      VITE_API_URL: "http://controller:8000/api"
+      VITE_API_URL: "http://localhost:8000"
       VITE_ENV: "${ENVIRONMENT:-development}"
       NODE_ENV: "${ENVIRONMENT:-development}"
     volumes:

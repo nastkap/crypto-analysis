@@ -1,5 +1,20 @@
 # Zadanie 3 - Krótka prezentacja uruchomienia systemu
 
+
+Zaktualizowana Architektura Systemu
+
+
+
+
+
+
+
+
+
+
+
+
+
 Najlepiej pokazać to w prosty sposób: **polecenie, krótki wynik i jedno zdanie komentarza**. Taka forma jest czytelna i od razu pokazuje, że system działa poprawnie.
 
 ## 1. Wdrożenie manifestów

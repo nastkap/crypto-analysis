@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+  .replace(/\/api\/?$/, '')
+  .replace(/\/$/, '');
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -12,7 +14,7 @@ const apiClient = axios.create({
 // System endpoints
 export const getSystemStatus = async () => {
   try {
-    const response = await apiClient.get('/status');
+    const response = await apiClient.get('/health');
     return response.data;
   } catch (error) {
     console.error('Error fetching system status:', error);
@@ -21,19 +23,18 @@ export const getSystemStatus = async () => {
 };
 
 export const getK8sPods = async () => {
-  try {
-    const response = await apiClient.get('/k8s/pods');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching K8s pods:', error);
-    throw error;
-  }
+  return getSystemStatus();
 };
 
 // Benchmark endpoints
 export const runBenchmark = async (config) => {
   try {
-    const response = await apiClient.post('/benchmark/run', config);
+    const nodes = Array.isArray(config.nodes) && config.nodes.includes('all') ? null : config.nodes;
+    const response = await apiClient.post('/benchmark', {
+      iterations: Number(config.iterations) || 100,
+      message: config.message || 'Tajny tekst do testowania wydajnosci systemu ECIES',
+      nodes,
+    });
     return response.data;
   } catch (error) {
     console.error('Error running benchmark:', error);

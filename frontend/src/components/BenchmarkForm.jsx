@@ -45,7 +45,7 @@ export const BenchmarkForm = ({ onBenchmarkStarted }) => {
 
     try {
       const result = await runBenchmark(formData);
-      setSuccess(`Benchmark started! ID: ${result.benchmark_id}`);
+      setSuccess(`Benchmark started! ID: ${result.run_id || 'pending'}`);
       onBenchmarkStarted(result);
       
       // Reset form
@@ -56,7 +56,7 @@ export const BenchmarkForm = ({ onBenchmarkStarted }) => {
         nodes: ['all'],
       });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to start benchmark');
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to start benchmark');
     } finally {
       setLoading(false);
     }

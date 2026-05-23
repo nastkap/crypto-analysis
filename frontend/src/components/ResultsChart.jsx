@@ -12,7 +12,12 @@ export const ResultsChart = () => {
   const fetchResults = async () => {
     try {
       const data = await getBenchmarkResults();
-      setResults(data);
+      const normalizedResults = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+      setResults(normalizedResults);
       setError(null);
     } catch (err) {
       setError('Failed to fetch results');
@@ -57,17 +62,17 @@ export const ResultsChart = () => {
 
   // Prepare data for charts
   const chartData = results.map(result => ({
-    algorithm: result.algorithm?.split('_').join(' ') || 'Unknown',
-    time_ms: parseFloat(result.time_ms).toFixed(2),
-    throughput_mbps: parseFloat(result.throughput_mbps || 0).toFixed(2),
-    ops_per_sec: parseInt(result.ops_per_sec || 0),
+    algorithm: result.Biblioteka || result.algorithm || 'Unknown',
+    encrypt_ms: Number(result.Encrypt_ms ?? result.encrypt_ms ?? 0),
+    decrypt_ms: Number(result.Decrypt_ms ?? result.decrypt_ms ?? 0),
+    total_ms: Number(result.Total_ms ?? result.total_ms ?? result.time_ms ?? 0),
   }));
 
   // Calculate statistics
   const stats = {
-    fastest: chartData.reduce((min, curr) => parseFloat(curr.time_ms) < parseFloat(min.time_ms) ? curr : min),
-    slowest: chartData.reduce((max, curr) => parseFloat(curr.time_ms) > parseFloat(max.time_ms) ? curr : max),
-    average: (chartData.reduce((sum, curr) => sum + parseFloat(curr.time_ms), 0) / chartData.length).toFixed(2),
+    fastest: chartData.reduce((min, curr) => curr.total_ms < min.total_ms ? curr : min),
+    slowest: chartData.reduce((max, curr) => curr.total_ms > max.total_ms ? curr : max),
+    average: (chartData.reduce((sum, curr) => sum + curr.total_ms, 0) / chartData.length).toFixed(2),
     total: chartData.length,
   };
 
@@ -104,12 +109,12 @@ export const ResultsChart = () => {
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
             <div className="text-sm text-gray-600">Fastest</div>
-            <div className="text-2xl font-bold text-primary">{stats.fastest.time_ms}ms</div>
+            <div className="text-2xl font-bold text-primary">{stats.fastest.total_ms.toFixed(2)}ms</div>
             <div className="text-xs text-gray-600">{stats.fastest.algorithm}</div>
           </div>
           <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg">
             <div className="text-sm text-gray-600">Slowest</div>
-            <div className="text-2xl font-bold text-red-600">{stats.slowest.time_ms}ms</div>
+            <div className="text-2xl font-bold text-red-600">{stats.slowest.total_ms.toFixed(2)}ms</div>
             <div className="text-xs text-gray-600">{stats.slowest.algorithm}</div>
           </div>
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
@@ -166,7 +171,7 @@ export const ResultsChart = () => {
               <XAxis dataKey="algorithm" />
               <YAxis label={{ value: 'Time (ms)', angle: -90, position: 'insideLeft' }} />
               <Tooltip />
-              <Bar dataKey="time_ms" fill="#2E86AB" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="total_ms" fill="#2E86AB" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -176,11 +181,11 @@ export const ResultsChart = () => {
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="algorithm" />
-              <YAxis label={{ value: 'Throughput (MB/s)', angle: -90, position: 'insideLeft' }} />
+              <YAxis label={{ value: 'Encrypt (ms)', angle: -90, position: 'insideLeft' }} />
               <Tooltip />
               <Line
                 type="monotone"
-                dataKey="throughput_mbps"
+                dataKey="encrypt_ms"
                 stroke="#A23B72"
                 strokeWidth={2}
                 dot={{ r: 6 }}
@@ -195,11 +200,11 @@ export const ResultsChart = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="algorithm" />
               <YAxis yAxisId="left" label={{ value: 'Time (ms)', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" label={{ value: 'Throughput (MB/s)', angle: 90, position: 'insideRight' }} />
+              <YAxis yAxisId="right" orientation="right" label={{ value: 'Encrypt (ms)', angle: 90, position: 'insideRight' }} />
               <Tooltip />
               <Legend />
-              <Bar yAxisId="left" dataKey="time_ms" fill="#2E86AB" name="Execution Time (ms)" />
-              <Line yAxisId="right" type="monotone" dataKey="throughput_mbps" stroke="#A23B72" name="Throughput (MB/s)" />
+              <Bar yAxisId="left" dataKey="total_ms" fill="#2E86AB" name="Total Time (ms)" />
+              <Line yAxisId="right" type="monotone" dataKey="encrypt_ms" stroke="#A23B72" name="Encrypt Time (ms)" />
             </ComposedChart>
           </ResponsiveContainer>
         )}
@@ -214,17 +219,17 @@ export const ResultsChart = () => {
               <tr>
                 <th className="px-4 py-2 text-left">Algorithm</th>
                 <th className="px-4 py-2 text-right">Time (ms)</th>
-                <th className="px-4 py-2 text-right">Throughput (MB/s)</th>
-                <th className="px-4 py-2 text-right">Ops/Sec</th>
+                <th className="px-4 py-2 text-right">Encrypt (ms)</th>
+                <th className="px-4 py-2 text-right">Decrypt (ms)</th>
               </tr>
             </thead>
             <tbody>
               {chartData.map((row, idx) => (
                 <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="px-4 py-3 font-semibold text-gray-900">{row.algorithm}</td>
-                  <td className="px-4 py-3 text-right font-mono text-primary">{row.time_ms}</td>
-                  <td className="px-4 py-3 text-right font-mono text-secondary">{row.throughput_mbps}</td>
-                  <td className="px-4 py-3 text-right font-mono">{row.ops_per_sec.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-mono text-primary">{row.total_ms.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-secondary">{row.encrypt_ms.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-mono">{row.decrypt_ms.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

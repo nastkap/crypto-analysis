@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -7,6 +8,14 @@ from benchmark import NODES, run_full_benchmark, results_to_csv
 from db import db_enabled, get_run, get_run_results, init_db, list_runs, save_run
 
 app = FastAPI(title="ECIES Benchmark Controller")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _last_results: list = []
 _last_csv: str = ""

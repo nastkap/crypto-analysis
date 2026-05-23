@@ -218,7 +218,7 @@ Creates optimized production build:
 Create `.env.production`:
 
 ```env
-VITE_API_URL=https://api.example.com/api
+VITE_API_URL=https://api.example.com
 VITE_ENV=production
 ```
 
@@ -244,7 +244,7 @@ docker build -t crypto-frontend:1.0.0 .
 
 # Run locally
 docker run -p 3000:3000 \
-  -e VITE_API_URL=http://localhost:8000/api \
+  -e VITE_API_URL=http://localhost:8000 \
   crypto-frontend:1.0.0
 ```
 
@@ -366,18 +366,18 @@ export const myNewEndpoint = async (params) => {
 Development proxy (Vite):
 ```javascript
 // vite.config.js already configured
-// /api → http://localhost:8000/api
+// /api → http://localhost:8000
 ```
 
 Production override:
 ```bash
 # .env.production
-VITE_API_URL=https://api.prod.com/api
+VITE_API_URL=https://api.prod.com
 ```
 
 Access in code:
 ```javascript
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:8000/api';
+const apiUrl = process.env.VITE_API_URL || 'http://localhost:8000';
 ```
 
 ---
@@ -392,7 +392,7 @@ const apiUrl = process.env.VITE_API_URL || 'http://localhost:8000/api';
 
 1. Check backend is running:
    ```bash
-   curl http://localhost:8000/api/health
+  curl http://localhost:8000/health
    ```
 
 2. Update API URL:
