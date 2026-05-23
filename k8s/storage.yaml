@@ -1,5 +1,5 @@
 ---
-# StorageClass - Definiuje typ przechowywania
+# StorageClass - definiuje typ przechowywania
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -27,7 +27,7 @@ spec:
       storage: 2Gi
 
 ---
-# PersistentVolumeClaim - Żądanie miejsca na dysku dla Redis (opcjonalne, ale zalecane)
+# PersistentVolumeClaim - Żądanie miejsca na dysku dla Redis 
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
