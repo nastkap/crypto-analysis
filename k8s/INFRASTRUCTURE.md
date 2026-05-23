@@ -41,10 +41,10 @@ W systemie zastosowano obiekt typu **Deployment** do zarządzania cyklem życia 
 
 | Mikroserwis | Typ obiektu | Liczba replik | Uzasadnienie doboru rodzaju obiektu i replikacji |
 | :--- | :--- | :--- | :--- |
-| **postgres** | Deployment | 1 | Zarządza relacyjną bazą danych PostgreSQL. Ze względu na to, że baza działa w konfiguracji jednoinstancyjnej z podmontowanym trwałym wolumenem przez PVC (tryb `ReadWriteOnce`), uruchomienie więcej niż 1 repliki doprowadziłoby do błędu blokady zapisu na dysku oraz problemu *race conditions* przy jednoczesnym zapisie wyników testów. |
+| **postgres** | Deployment | 1 | Zarządza relacyjną bazą danych PostgreSQL. Ze względu na to, że baza działa w konfiguracji jednoinstancyjnej z podmontowanym trwałym wolumenem przez PVC, uruchomienie więcej niż 1 repliki doprowadziłoby do błędu blokady zapisu na dysku oraz problemu *race conditions* przy jednoczesnym zapisie wyników testów. |
 | **message-broker** | Deployment | 1 | Odpowiada za instancję serwera Redis. Z perspektywy architektury benchmarku, Redis służy jako bezstanowy broker zadań i kolejka FIFO. Trwałość danych transakcyjnych zapewniana jest przez PostgreSQL, więc Redis nie wymaga złożonej koordynacji stanu sieciowego właściwej dla StatefulSet. 1 replika jest w pełni wystarczająca dla środowiska testowego. |
 | **benchmark-controller** | Deployment | 1 | Centralna jednostka sterująca, odpowiadająca za orkiestrację testów wydajnościowych. Logika działania aplikacji wymaga jednej instancji zarządzającej, aby zachować sekwencyjność i spójność rozsyłania zadań do węzłów oraz uniknąć duplikowania zleceń. |
-| **node-py-crypto**<br>**node-py-pycryptodome**<br>**node-cpp-openssl**<br>**node-cpp-cryptopp** | Deployment | 1 (dla każdego węzła) | Węzły obliczeniowe wykonujące operacje kryptograficzne. Każdy węzeł reprezentuje inną bibliotekę i technologię (Python vs C++). Muszą one działać jako niezależne, pojedyncze instancje, aby pomiary wydajnościowe (zużycie CPU/RAM oraz czas wykonania) odzwierciedlały czystą wydajność danej biblioteki, bez rozpraszania ruchu na kopie tego samego podu. |
+| **node-py-crypto**<br>**node-py-pycryptodome**<br>**node-cpp-openssl**<br>**node-cpp-cryptopp** | Deployment | 1 (dla każdego węzła) | Węzły obliczeniowe wykonujące operacje kryptograficzne. Każdy węzeł reprezentuje inną bibliotekę i technologię (Python vs C++). Muszą one działać jako niezależne, pojedyncze instancje, aby pomiary wydajnościowe odzwierciedlały czystą wydajność danej biblioteki, bez rozpraszania ruchu na kopie tego samego podu. |
 | **frontend** | Deployment | 2 | Interfejs użytkownika (React UI). Zastosowano **2 repliki**, aby zapewnić wysoką dostępność (High Availability) warstwy prezentacji. W przypadku awarii jednego z podów lub jego restartu, drugi pod natychmiast przejmuje obsługę żądań HTTP użytkownika. |
 
 
@@ -180,5 +180,5 @@ Zdefiniowano precyzyjne ścieżki komunikacji (*Least Privilege*):
 * `controller-allow-ingress`: Pozwala na ruch przychodzący do centralnego kontrolera (port 8000) z innych podów w klastrze (niezbędne do odbierania żądań z frontendu oraz komunikacji zwrotnej).
 * `crypto-nodes-allow-ingress`: Zezwala na ruch przychodzący na port 8000 węzłów szyfrujących (Python/C++) wyłącznie z podów kontrolera, co zabezpiecza endpointy testowe przed nieautoryzowanym odpytywaniem.
 
-* **Uzasadnienie:** Takie podejście drastycznie ogranicza wektor ataku (blast radius). Nawet jeśli atakujący skompromituje kontener Frontendu, Network Policy na poziomie wirtualnej sieci K8s zablokuje mu możliwość skanowania portów lub ataku bezpośrednio na bazę danych PostgreSQL czy węzły szyfrujące.
+**Uzasadnienie:** Takie podejście drastycznie ogranicza wektor ataku (blast radius). Nawet jeśli atakujący skompromituje kontener Frontendu, Network Policy na poziomie wirtualnej sieci K8s zablokuje mu możliwość skanowania portów lub ataku bezpośrednio na bazę danych PostgreSQL czy węzły szyfrujące.
 ---

@@ -60,21 +60,27 @@ export const ResultsChart = () => {
     );
   }
 
-  // Prepare data for charts
-  const chartData = results.map(result => ({
+  // Safely prepare data for charts (defend against unexpected server shapes)
+  const safeResults = Array.isArray(results)
+    ? results
+    : Array.isArray(results?.results)
+      ? results.results
+      : [];
+
+  const chartData = safeResults.map(result => ({
     algorithm: result.Biblioteka || result.algorithm || 'Unknown',
     encrypt_ms: Number(result.Encrypt_ms ?? result.encrypt_ms ?? 0),
     decrypt_ms: Number(result.Decrypt_ms ?? result.decrypt_ms ?? 0),
     total_ms: Number(result.Total_ms ?? result.total_ms ?? result.time_ms ?? 0),
   }));
 
-  // Calculate statistics
-  const stats = {
-    fastest: chartData.reduce((min, curr) => curr.total_ms < min.total_ms ? curr : min),
-    slowest: chartData.reduce((max, curr) => curr.total_ms > max.total_ms ? curr : max),
+  // Calculate statistics safely (handle empty chartData)
+  const stats = chartData.length > 0 ? {
+    fastest: chartData.reduce((min, curr) => (curr.total_ms < min.total_ms ? curr : min)),
+    slowest: chartData.reduce((max, curr) => (curr.total_ms > max.total_ms ? curr : max)),
     average: (chartData.reduce((sum, curr) => sum + curr.total_ms, 0) / chartData.length).toFixed(2),
     total: chartData.length,
-  };
+  } : { fastest: { total_ms: 0, algorithm: '—' }, slowest: { total_ms: 0, algorithm: '—' }, average: '0.00', total: 0 };
 
   return (
     <div className="space-y-6">
