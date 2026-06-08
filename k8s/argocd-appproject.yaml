@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: crypto-perf-project
+  namespace: argocd
+spec:
+  # Opis projektu
+  description: "Projekt dla aplikacji crypto-analysis - wdrażanie tylko w namespace crypto-perf"
+  
+  # Repozytoria których może używać (GitOps policy)
+  sourceRepos:
+    - 'https://github.com/nastkap/crypto-analysis.git'
+    # Można dodać więcej repozytoriów jeśli potrzeba
+    # - 'https://github.com/...'
+  
+  # Dozwolone docelowe klastry i namespaces
+  destinations:
+    - namespace: 'crypto-perf'
+      server: 'https://kubernetes.default.svc'
+    # Opcjonalnie: allow sync to project namespace
+    - namespace: 'argocd'
+      server: 'https://kubernetes.default.svc'
+      name: 'argocd'
+  
+  # Polityka - zezwól na wszystkie zasoby dla tego projektu
+  clusterResourceBlacklist: []
+  
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  
+  namespaceResourceBlacklist: []
+  
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  
+  # Rola dla projektu - uprawnień
+  roles:
+    - name: developers
+      description: "Dostęp do synchronizacji aplikacji"
+      policies:
+        # Polityka RBAC - format: "p, sub, obj, act, eft"
+        - p, proj:crypto-perf-project:developers, applications, get, crypto-perf-project/*, allow
+        - p, proj:crypto-perf-project:developers, applications, sync, crypto-perf-project/*, allow
+        - p, proj:crypto-perf-project:developers, repositories, get, *, allow
+      groups: []  # LDAP/OIDC groups могут być dodane tutaj
+  
+  # Synchronize policy - ograniczenia
+  syncWindows:
+    - kind: allow
+      schedule: '0 0 * * *'  # Codziennie o północy
+      duration: 23h
+      applications:
+        - '*'
+      clusters:
+        - '*'
+      namespaces:
+        - 'crypto-perf'

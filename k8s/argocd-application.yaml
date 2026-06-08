@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crypto-analysis
+  namespace: argocd
+spec:
+  project: crypto-perf-project
+  
+  source:
+    repoURL: https://github.com/nastkap/crypto-analysis.git
+    targetRevision: master
+    path: k8s
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crypto-perf
+  
+  syncPolicy:
+    syncOptions:
+      # Utwórz namespace jeśli nie istnieje
+      - CreateNamespace=true
+      # Usuń zasoby po aplikacji (zamiast przed) - bezpieczniejszy tryb
+      - PruneLast=false
+      # Stosuj tylko zasoby które są Out of Sync
+      - ApplyOutOfSyncOnly=true
+      # Zapobiegaj zmianom imperatywnym - wymuszenie GitOps
+      - Validate=false
+    
+    automated:
+      # Automatycznie sync'uj zmiany z GitHub
+      prune: true
+      # Naprawiaj zmiany wprowadzone poza GitOps (self-healing)
+      selfHeal: true
+  
+  # Polityka zabezpieczająca przed zmianami poza GitOps
+  # Jeśli ktoś wprowadzi zmianę imperatywnie, ArgoCD automatycznie ją naprawia
+  revisionHistoryLimit: 10
+  
+  # Ignoruj zmiany w tych polach podczas sync'u
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
