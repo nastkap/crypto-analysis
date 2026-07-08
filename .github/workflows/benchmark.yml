@@ -11,9 +11,6 @@ on:
       - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [ main ]
-  schedule:
-    # Codziennie o 2 AM UTC
-    - cron: '0 2 * * *'
 
 jobs:
   benchmark:
@@ -234,7 +231,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '✅ **Benchmark tests completed!**\n\n📊 Results:\n- Download artifacts from Actions tab\n- View report: Check the uploaded `performance-report.html`\n- K6 results: `k6-results.json`\n- Database export: `db-export.csv`'
+              body: ' **Benchmark tests completed!**\n\n Results:\n- Download artifacts from Actions tab\n- View report: Check the uploaded `performance-report.html`\n- K6 results: `k6-results.json`\n- Database export: `db-export.csv`'
             })
 
       - name: Cleanup
@@ -247,6 +244,6 @@ jobs:
       - name: Failure notification
         if: failure()
         run: |
-          echo "❌ Benchmark failed!"
+          echo " Benchmark failed!"
           echo "Check logs above for details"
           exit 1
