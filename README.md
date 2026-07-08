@@ -1,21 +1,8 @@
 # Crypto-Analysis
 
-Crypto-Analysis to headless system benchmarkowy do porównywania implementacji ECIES w Pythonie i C++. Projekt uruchamia ten sam scenariusz kryptograficzny na kilku bibliotekach, zbiera wyniki, zapisuje je w PostgreSQL i udostępnia przez API oraz Grafanę.
+Crypto-Analysis to headless system benchmarkowy do porównywania implementacji  ECIES bibliotek w Pythonie i C++. Projekt uruchamia te same scenariusze kryptograficzne na kilku bibliotekach, zbiera wyniki, zapisuje je w PostgreSQL i udostępnia przez API oraz Grafanę.
 
 To nie jest klasyczna aplikacja z interfejsem użytkownika. To zestaw usług, manifestów i skryptów DevOps zaprojektowanych tak, żeby można było powtarzalnie uruchamiać benchmarki lokalnie w Docker Compose, lokalnie w Kubernetesie na Minikube albo w klastrze zarządzanym manifestami z repozytorium.
-
----
-
-## Co ten projekt robi
-
-Projekt odpowiada na cztery podstawowe pytania:
-
-1. która implementacja ECIES działa najszybciej,
-2. jak zachowują się różne biblioteki pod obciążeniem,
-3. czy wyniki można trwale zapisywać i później analizować,
-4. czy cały pipeline uruchomienia, budowania, wdrożenia i skanowania bezpieczeństwa jest powtarzalny.
-
-W praktyce system pozwala uruchamiać benchmarki kryptograficzne, porównywać je między językami i bibliotekami, a następnie oglądać wyniki w postaci JSON, CSV, rekordów w bazie i dashboardów w Grafanie.
 
 ---
 ## Wykorzystane technologie
@@ -23,7 +10,7 @@ W praktyce system pozwala uruchamiać benchmarki kryptograficzne, porównywać j
 | Obszar | Technologie |
 | --- | --- |
 | Backend | FastAPI, Uvicorn, Pydantic |
-| Kryptografia Python | `cryptography`, `PyCryptodome` |
+| Kryptografia Python | Cryptography, PyCryptodome |
 | Kryptografia C++ | OpenSSL, Crypto++ |
 | Bazy i broker | PostgreSQL, Redis |
 | Konteneryzacja | Docker, Docker Compose |
