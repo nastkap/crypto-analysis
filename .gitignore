@@ -15,3 +15,16 @@ k8s/argocd-secret.yaml
 
 k8s/.argocd-secret.yaml
 k8s/argocd-secret.yaml.bak
+
+# Test / build artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Local logs and reports
+*.log
+*.tmp
+*.bak

@@ -112,12 +112,14 @@ def health_check():
 
 @app.get("/public-key")
 def get_public_key():
-    """Zwraca klucz publiczny tego węzła, żeby inni wiedzieli jak do niego szyfrować."""
+    """Zwraca klucz publiczny tego węzła w formacie PEM."""
+    print("DEBUG: FUNKCJA PUBLIC-KEY ZOSTAŁA WYWOŁANA!", flush=True) 
+    
     pub_bytes = node_public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
-    return {"public_key_pem": pub_bytes.decode('utf-8')}
+    return {"status": "ok", "public_key_pem": pub_bytes.decode('utf-8')}
 
 @app.post("/encrypt")
 def encrypt_message(req: EncryptRequest):

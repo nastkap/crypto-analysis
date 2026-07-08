@@ -1,8 +1,8 @@
 Param(
     [string]$OutDir = "perf/results",
-    [int[]]$Payloads = @(10485760),  # 10MB (standard payload)
-    [string]$Duration = "60s",        # Time to complete ~100 iterations
-    [int]$Repeats = 10               # 10 runs per library
+    [int[]]$Payloads = @(10485760), 
+    [string]$Duration = "60s",        
+    [int]$Repeats = 10               
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,8 +24,7 @@ for ($i = 1; $i -le $Repeats; $i++) {
     foreach ($target in $targets) {
         foreach ($payload in $Payloads) {
             $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $summaryFile = Join-Path $OutDir "$($target.Name)-stability-r$i-$payload-$timestamp-summary.json"
-            $rawFile = Join-Path $OutDir "$($target.Name)-stability-r$i-$payload-$timestamp-raw.json"
+            $rawFile = Join-Path $OutDir "$($target.Name)-stabilitys5-r$i-$payload-$timestamp-raw.json"
 
             Write-Host "[STABILITY] Run=$i/$Repeats, node=$($target.Name), payload=$payload bytes, duration=$Duration"
 
@@ -34,12 +33,11 @@ for ($i = 1; $i -le $Repeats; $i++) {
                 -e NODE_NAME=$($target.Name) `
                 -e PAYLOAD_BYTES=$payload `
                 -e DURATION=$Duration `
-                --summary-export=$summaryFile `
                 --out json=$rawFile `
-                perf/k6/benchmark.js --summary-export=perf/results/stability_summarys5.json
+                perf/k6/benchmark.js 
             
         }
     }
 }
 
-Write-Host "Stability tests completed. Results in: $OutDir"
+

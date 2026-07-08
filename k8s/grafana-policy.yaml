@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-grafana
+  namespace: crypto-perf
+spec:
+  # Do kogo stosujemy regułę (nasz cel: baza danych)
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  # Od kogo pozwalamy na ruch (nasz gość: Grafana)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: grafana
+    ports:
+    - protocol: TCP
+      port: 5432

@@ -1,6 +1,5 @@
 
-# Plik do testowania pierwszej wersji aplikacji crypto-analysis
-# Potwierdzenie poprawności funkcjonalnej systemu
+
 
 version: '3.9'
 
@@ -299,55 +298,7 @@ services:
       com.crypto-analysis.app: "postgres"
       com.crypto-analysis.type: "database"
 
-  # ========================================================================
-  # 8. FRONTEND - React UI Application
-  # ========================================================================
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: crypto-frontend-dev
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    environment:
-      # Zmienne środowiskowe z .env
-      VITE_API_URL: "http://localhost:8000"
-      VITE_ENV: "${ENVIRONMENT:-development}"
-      NODE_ENV: "${ENVIRONMENT:-development}"
-    volumes:
-      # Hot reload dla development
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      # Frontend logs i cache
-      - frontend_logs:/app/logs
-      - frontend_cache:/app/.vite
-    networks:
-      - crypto_network
-    depends_on:
-      controller:
-        condition: service_healthy
-    restart: unless-stopped
-    # Best Practice #5: Health Checks
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    # Best Practice #6: Resource Limits
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    labels:
-      com.crypto-analysis.app: "frontend"
-      com.crypto-analysis.version: "${APP_VERSION:-1.0.0}"
-      com.crypto-analysis.type: "react-ui"
-
+  
 # ============================================================================
 # VOLUMES 
 # 

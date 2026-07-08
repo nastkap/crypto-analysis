@@ -21,11 +21,12 @@ resources:
   
   # Application Components
   - nodes.yaml
-  - frontend.yaml
+  - grafana.yaml          
   
   # Networking & Ingress
   - ingress.yaml
   - network-policy.yaml
+  - grafana-policy.yaml   
   
   # Scheduling & Affinity (opcjonalnie)
   # - node-affinity.yaml

@@ -15,17 +15,8 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  # Frontend (React UI)
-  - host: localhost
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 3000
+
+ 
 
   # Controller API
   - host: localhost
@@ -47,35 +38,35 @@ spec:
               number: 8000
 
   # Węzły szyfrowania (routing do różnych węzłów)
+ 
   - host: localhost
     http:
       paths:
-      - path: /api/node-py-crypto
-        pathType: Prefix
+      - path: /api/node-py-crypto(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: node-py-crypto
             port:
               number: 8000
-      - path: /api/node-py-pycryptodome
-        pathType: Prefix
+      - path: /api/node-py-pycryptodome(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: node-py-pycryptodome
             port:
               number: 8000
-      - path: /api/node-cpp-openssl
-        pathType: Prefix
+      - path: /api/node-cpp-openssl(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: node-cpp-openssl
             port:
               number: 8000
-      - path: /api/node-cpp-cryptopp
-        pathType: Prefix
+      - path: /api/node-cpp-cryptopp(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: node-cpp-cryptopp
             port:
               number: 8000
-

@@ -93,7 +93,7 @@ def analyze_results(trivy_cmd, images):
         report["images"][image] = {
             "critical": critical_count,
             "high": high_count,
-            "status": "✅ PASS" if critical_count == 0 else "❌ FAIL"
+            "status": "PASS" if critical_count == 0 else "FAIL"
         }
         
         all_critical += critical_count

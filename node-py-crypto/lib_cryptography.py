@@ -6,9 +6,6 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 class ECIES:
     def __init__(self):
-        """
-        Inicjalizacja systemu. Wybieramy krzywą NISTP-256.
-        """
         self.curve = ec.SECP256R1()
 
     def generate_keys(self):
@@ -17,7 +14,6 @@ class ECIES:
         return private_key, public_key
 
     def _derive_shared_key(self, private_key, peer_public_key):
-        """KEM: Uzgadnianie klucza (ECDH + HKDF)."""
         shared_secret = private_key.exchange(ec.ECDH(), peer_public_key)
         derived_key = HKDF(
             algorithm=hashes.SHA256(),
@@ -28,7 +24,6 @@ class ECIES:
         return derived_key
 
     def encrypt(self, receiver_public_key, plaintext):
-        """Szyfrowanie: Zwraca (ephemeral_pub_bytes, nonce, ciphertext)."""
         ephemeral_priv, ephemeral_pub = self.generate_keys()
         aes_key = self._derive_shared_key(ephemeral_priv, receiver_public_key)
 
@@ -43,25 +38,11 @@ class ECIES:
         return ephemeral_pub_bytes, nonce, ciphertext
 
     def decrypt(self, receiver_private_key, package):
-        """
-        Deszyfrowanie ECIES.
-        1. Odtwarza klucz publiczny nadawcy.
-        2. Uzgadnia ten sam klucz AES (KEM).
-        3. Odszyfrowuje treść (DEM).
-        """
         ephemeral_pub_bytes, nonce, ciphertext = package
-
-        # 1. Odtworzenie klucza publicznego nadawcy z bajtów
         ephemeral_pub_key = serialization.load_pem_public_key(ephemeral_pub_bytes)
-
-        # 2. Ponowne uzgodnienie tego samego klucza AES
-        # Odbiorca używa SWOJEGO klucza prywatnego i klucza publicznego NADAWCY (z paczki)
         aes_key = self._derive_shared_key(receiver_private_key, ephemeral_pub_key)
-
-        # 3. Deszyfrowanie
         aes = AESGCM(aes_key)
         try:
-            # AES-GCM sprawdza też integralność (czy nikt nie zmienił treści)
             plaintext_bytes = aes.decrypt(nonce, ciphertext, None)
             return plaintext_bytes.decode('utf-8')
         except Exception as e:
